@@ -14,6 +14,85 @@ const SUPABASE_URL  = 'https://sgoquworukbiotprqbxn.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNnb3F1d29ydWtiaW90cHJxYnhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3Mjc4NzQsImV4cCI6MjA5MDMwMzg3NH0.zP0TuXUos7vb4UnJry28RlyVQoyHkkyNHsrbJTl9y14';
 // =====================================================
 const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ── 허용 계정 (이메일 형식으로 Supabase Auth 사용) ──
+// Supabase Auth에 등록된 이메일/비밀번호로 로그인
+// 아래는 로컬 fallback용 (Supabase Auth 실패 시)
+const LOCAL_ACCOUNTS = {
+  'shj3141':      'qkqldirl123!',
+  'taein.yeom':   'qkqldirl123!',
+};
+
+// 세션 체크 후 로그인 화면 표시 여부 결정
+async function checkAuthOnLoad() {
+  // 로컬 세션 먼저 확인 (빠른 응답)
+  const localUser = sessionStorage.getItem('babiyagi_user');
+  if (localUser) {
+    hideLoginScreen();
+    return;
+  }
+  // Supabase 세션 확인
+  try {
+    const { data: { session } } = await _sb.auth.getSession();
+    if (session) {
+      sessionStorage.setItem('babiyagi_user', session.user.email);
+      hideLoginScreen();
+      return;
+    }
+  } catch(e) {}
+  // 로그인 필요
+  showLoginScreen();
+}
+
+function showLoginScreen() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-id').focus();
+}
+
+function hideLoginScreen() {
+  document.getElementById('login-screen').style.display = 'none';
+}
+
+async function doLogin() {
+  const id  = document.getElementById('login-id').value.trim();
+  const pw  = document.getElementById('login-pw').value;
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('login-error');
+  if (!id || !pw) { err.textContent = '아이디와 비밀번호를 입력해주세요.'; return; }
+
+  btn.disabled = true;
+  btn.textContent = '로그인 중...';
+  err.textContent = '';
+
+  // 1) 로컬 계정 확인 (Supabase Auth 없이도 동작)
+  if (LOCAL_ACCOUNTS[id] && LOCAL_ACCOUNTS[id] === pw) {
+    sessionStorage.setItem('babiyagi_user', id);
+    hideLoginScreen();
+    btn.disabled = false;
+    btn.textContent = '로그인';
+    return;
+  }
+
+  // 2) Supabase Auth 시도 (이메일 형식인 경우)
+  try {
+    const email = id.includes('@') ? id : id + '@babiyagi.com';
+    const { data, error } = await _sb.auth.signInWithPassword({ email, password: pw });
+    if (!error && data.session) {
+      sessionStorage.setItem('babiyagi_user', id);
+      hideLoginScreen();
+      btn.disabled = false;
+      btn.textContent = '로그인';
+      return;
+    }
+  } catch(e) {}
+
+  // 실패
+  err.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
+  btn.disabled = false;
+  btn.textContent = '로그인';
+  document.getElementById('login-pw').value = '';
+  document.getElementById('login-pw').focus();
+}
 </script>
 <style>
 :root{--bg:#0f0e0c;--bg2:#1a1814;--bg3:#242118;--bg4:#2c2820;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);--accent:#e8a045;--accent2:#c4813a;--adim:rgba(232,160,69,0.12);--adim2:rgba(232,160,69,0.2);--text:#f0ebe3;--t2:#a09890;--t3:#6a6058;--green:#5daa7a;--gdim:rgba(93,170,122,0.15);--blue:#5b8fd4;--bdim:rgba(91,143,212,0.15);--red:#d46060;--rdim:rgba(212,96,96,0.15);--r:12px;--rsm:8px}
@@ -126,6 +205,21 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 .modal-val{color:var(--text);text-align:right;flex:1}
 .sub-badge{font-size:10px;padding:1px 6px;border-radius:10px;background:var(--bdim);color:var(--blue);font-family:'DM Mono',monospace}
 .session-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:2px}
+/* 로그인 화면 */
+#login-screen{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.login-box{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:2.5rem 2rem;width:100%;max-width:380px}
+.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:2rem;justify-content:center}
+.login-logo-mark{width:44px;height:44px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#1a1814}
+.login-title{font-size:18px;font-weight:700}
+.login-sub{font-size:11px;color:var(--t3);margin-top:2px}
+.login-field{margin-bottom:.875rem}
+.login-label{font-size:11px;color:var(--t3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+.login-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 14px;color:var(--text);font-size:14px;font-family:'Noto Sans KR',sans-serif;outline:none;transition:border-color .2s}
+.login-input:focus{border-color:var(--accent)}
+.login-btn{width:100%;background:var(--accent);border:none;border-radius:var(--rsm);padding:12px;color:#1a1814;font-size:15px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;margin-top:.5rem;transition:background .15s}
+.login-btn:hover{background:var(--accent2)}
+.login-btn:disabled{opacity:.5;cursor:not-allowed}
+.login-error{font-size:12px;color:var(--red);text-align:center;margin-top:.75rem;min-height:18px}
 @media print{
   header,.nav,.filters,.btn,.upload-zone,.date-filter-bar,
   #print-btn-area,.no-print{display:none!important}
@@ -143,12 +237,38 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 </style>
 </head>
 <body>
+<!-- 로그인 화면 -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-mark">바</div>
+      <div>
+        <div class="login-title">바비야기 수원점</div>
+        <div class="login-sub">운영 관리 시스템</div>
+      </div>
+    </div>
+    <div class="login-field">
+      <div class="login-label">아이디</div>
+      <input id="login-id" class="login-input" type="text" placeholder="아이디 입력" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('login-pw').focus()">
+    </div>
+    <div class="login-field">
+      <div class="login-label">비밀번호</div>
+      <input id="login-pw" class="login-input" type="password" placeholder="비밀번호 입력" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" id="login-btn" onclick="doLogin()">로그인</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
 <header>
   <div class="logo">
     <div class="logo-mark">바</div>
     <div><div class="logo-text">바비야기 수원점</div><div class="logo-sub">운영 관리 시스템</div></div>
   </div>
-  <div class="hdate" id="hdate"></div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="hdate" id="hdate"></div>
+    <button onclick="doLogout()" style="font-size:11px;padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--t3);cursor:pointer;font-family:'Noto Sans KR',sans-serif" title="로그아웃">로그아웃</button>
+  </div>
 </header>
 <div class="nav">
   <div class="nav-tab active" onclick="showTab('recipe')">🥘 메뉴 선택</div>
@@ -440,6 +560,9 @@ const CATS = ['전체','판매중','튼튼메뉴','일품메뉴','국','프리�
   renderMenuGrid();
   initStock();
   loadOrdersFromStorage();
+  // 인증 확인 (로그인 화면 먼저 숨겨두고 체크 후 결정)
+  document.getElementById('login-screen').style.display = 'none';
+  checkAuthOnLoad();
 })();
 
 function buildCatFilters() {
@@ -1790,6 +1913,17 @@ function renderStockNeeded() {
 }
 
 
+// ===================== 인증 =====================
+async function doLogout() {
+  if (!confirm('로그아웃 하시겠습니까?')) return;
+  sessionStorage.removeItem('babiyagi_user');
+  try { await _sb.auth.signOut(); } catch(e) {}
+  showLoginScreen();
+  document.getElementById('login-id').value = '';
+  document.getElementById('login-pw').value = '';
+  document.getElementById('login-error').textContent = '';
+}
+
 // ===================== 인쇄 =====================
 function printSingle(htmlContent, title) {
   const w = window.open('', '_blank', 'width=800,height=600');
@@ -1804,7 +1938,22 @@ function printSingle(htmlContent, title) {
       .recipe-box{background:#f9f7f3;border-left:3px solid #e8a045;padding:10px 14px;border-radius:4px;white-space:pre-wrap;font-size:12px;line-height:1.7;margin-top:8px}
       .badge{font-size:10px;padding:1px 6px;border-radius:10px;background:#e8a045;color:#fff;font-weight:600}
       .ing-chip{font-size:11px;background:#eee;padding:1px 5px;border-radius:3px;margin:1px;display:inline-block}
-      @media print{body{margin:10px}}
+      /* 로그인 화면 */
+#login-screen{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.login-box{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:2.5rem 2rem;width:100%;max-width:380px}
+.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:2rem;justify-content:center}
+.login-logo-mark{width:44px;height:44px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#1a1814}
+.login-title{font-size:18px;font-weight:700}
+.login-sub{font-size:11px;color:var(--t3);margin-top:2px}
+.login-field{margin-bottom:.875rem}
+.login-label{font-size:11px;color:var(--t3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+.login-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 14px;color:var(--text);font-size:14px;font-family:'Noto Sans KR',sans-serif;outline:none;transition:border-color .2s}
+.login-input:focus{border-color:var(--accent)}
+.login-btn{width:100%;background:var(--accent);border:none;border-radius:var(--rsm);padding:12px;color:#1a1814;font-size:15px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;margin-top:.5rem;transition:background .15s}
+.login-btn:hover{background:var(--accent2)}
+.login-btn:disabled{opacity:.5;cursor:not-allowed}
+.login-error{font-size:12px;color:var(--red);text-align:center;margin-top:.75rem;min-height:18px}
+@media print{body{margin:10px}}
     </style></head><body>`);
   w.document.write(htmlContent);
   w.document.write('</body></html>');

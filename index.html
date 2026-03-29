@@ -386,8 +386,8 @@ tr:hover td{background:rgba(255,255,255,0.015)}
       <input type="date" id="filter-from" class="date-input" onchange="applyAllFilters()">
       <span style="color:var(--t3);font-size:12px">~</span>
       <input type="date" id="filter-to" class="date-input" onchange="applyAllFilters()">
-      <button id="filter-tue-btn" class="btn btn-sm btn-a" onclick="setDeliveryFilter('tue')">화요일배송</button>
-      <button id="filter-fri-btn" class="btn btn-sm btn-a" onclick="setDeliveryFilter('fri')">금요일배송</button>
+      <button id="filter-tue-btn" class="btn btn-sm" onclick="setDeliveryFilter('tue')">화요일배송</button>
+      <button id="filter-fri-btn" class="btn btn-sm" onclick="setDeliveryFilter('fri')">금요일배송</button>
       <button class="btn btn-sm" onclick="clearDateFilter()">전체</button>
       <span id="filter-label" style="font-size:11px;color:var(--green)"></span>
     </div>
@@ -531,7 +531,7 @@ let currentImportFilename = '';
 let allOrders = [];            // 런타임 주문 목록
 let filteredOrders = [];   // 현재 필터 결과
 let ordTypeFilter = 'all'; // 탭 필터
-let deliveryDayFilter = 'all'; // 'all' | 'tue' | 'fri'
+let deliveryDayFilter = new Set(); // 빈 Set = 전체, 'tue'/'fri' 토글
 let importHistory = [];    // [{id, filename, date, count}]
 let stockItems = [];
 let stockCatFilter = '전체';
@@ -911,6 +911,10 @@ function parseOrderFile(file) {
 function buildOrders(rows) {
   const map = {};
   rows.forEach(r => {
+    // 취소 주문 제외
+    const orderStatus = (r['주문상태']||r['상태']||r['status']||'').trim();
+    if (orderStatus === '취소완료') return;
+
     const id = r['주문번호']||r['order_id']||r['id']||('ROW-'+Math.random());
     const rawDate = r['주문일시']||r['주문일']||r['결제일']||r['날짜']||r['datetime']||r['발송예정일']||r['수령일시']||'';
     const orderDate = parseDate(rawDate); // 실제 주문일
@@ -1191,23 +1195,22 @@ function getNextWeekday(targetDay, fromDate) {
 }
 // 화요일/금요일 배송 필터: 2주치(이번+다음)를 함께 선택
 function setDeliveryFilter(day) {
-  deliveryDayFilter = day;
-  const targetDay = day === 'tue' ? 2 : 5;
-  const today = new Date();
-  // 이번 주 해당 요일
-  const d1 = getNextWeekday(targetDay, today);
-  // 다음 주 해당 요일
-  const d2 = new Date(d1); d2.setDate(d1.getDate() + 7);
-  const fmt = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  // 토글: 이미 선택된 경우 해제, 아니면 추가
+  if (deliveryDayFilter.has(day)) {
+    deliveryDayFilter.delete(day);
+  } else {
+    deliveryDayFilter.add(day);
+  }
+  // 날짜 입력 필드는 비워둠 (요일 직접 비교 방식 사용)
   const fromEl = document.getElementById('filter-from');
   const toEl   = document.getElementById('filter-to');
-  if (fromEl) fromEl.value = fmt(d1);
-  if (toEl)   toEl.value   = fmt(d2);
-  // 버튼 하이라이트
+  if (fromEl) fromEl.value = '';
+  if (toEl)   toEl.value   = '';
+  // 버튼 활성화 스타일
   const tueBtn = document.getElementById('filter-tue-btn');
   const friBtn = document.getElementById('filter-fri-btn');
-  if (tueBtn) tueBtn.style.opacity = day === 'tue' ? '1' : '0.5';
-  if (friBtn) friBtn.style.opacity = day === 'fri' ? '1' : '0.5';
+  if (tueBtn) tueBtn.classList.toggle('btn-a', deliveryDayFilter.has('tue'));
+  if (friBtn) friBtn.classList.toggle('btn-a', deliveryDayFilter.has('fri'));
   applyAllFilters();
 }
 
@@ -1325,15 +1328,15 @@ function setTodayFilter() {
   applyAllFilters();
 }
 function clearDateFilter() {
-  deliveryDayFilter = 'all';
+  deliveryDayFilter = new Set();
   const fromEl = document.getElementById('filter-from');
   const toEl   = document.getElementById('filter-to');
   if (fromEl) fromEl.value = '';
   if (toEl)   toEl.value   = '';
   const tueBtn = document.getElementById('filter-tue-btn');
   const friBtn = document.getElementById('filter-fri-btn');
-  if (tueBtn) tueBtn.style.opacity = '1';
-  if (friBtn) friBtn.style.opacity = '1';
+  if (tueBtn) tueBtn.classList.remove('btn-a');
+  if (friBtn) friBtn.classList.remove('btn-a');
   applyAllFilters();
 }
 
@@ -1357,9 +1360,25 @@ function applyAllFilters() {
   const toVal   = toEl   ? toEl.value   : '';
   const from = fromVal ? new Date(fromVal+'T00:00:00') : null;
   const to   = toVal   ? new Date(toVal+'T23:59:59')   : null;
+
+  // 요일 필터가 있으면 가장 가까운 해당 요일 날짜 계산
+  const today = new Date(); today.setHours(0,0,0,0);
+  const targetDates = new Set(); // 'YYYY-MM-DD' 문자열
+  if (deliveryDayFilter.has('tue')) {
+    const d = getNextWeekday(2, today);
+    targetDates.add(d.toDateString());
+  }
+  if (deliveryDayFilter.has('fri')) {
+    const d = getNextWeekday(5, today);
+    targetDates.add(d.toDateString());
+  }
+
   filteredOrders = allOrders.filter(o => {
     const dt = o.datetime;
-    if (!dt) return true;
+    if (!dt) return deliveryDayFilter.size === 0; // 날짜없는 주문은 전체일 때만
+    // 요일 필터 활성 시: 해당 날짜인 것만
+    if (targetDates.size > 0) return targetDates.has(dt.toDateString());
+    // 날짜 범위 필터
     if (from && dt < from) return false;
     if (to   && dt > to)   return false;
     return true;

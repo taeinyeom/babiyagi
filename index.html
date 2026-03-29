@@ -1,0 +1,1944 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>바비야기 수원점 — 운영 관리</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// =====================================================
+// ⚙️  Supabase 설정 - 본인 값으로 교체하세요
+// =====================================================
+const SUPABASE_URL  = 'https://sgoquworukbiotprqbxn.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNnb3F1d29ydWtiaW90cHJxYnhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3Mjc4NzQsImV4cCI6MjA5MDMwMzg3NH0.zP0TuXUos7vb4UnJry28RlyVQoyHkkyNHsrbJTl9y14';
+// =====================================================
+const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+</script>
+<style>
+:root{--bg:#0f0e0c;--bg2:#1a1814;--bg3:#242118;--bg4:#2c2820;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);--accent:#e8a045;--accent2:#c4813a;--adim:rgba(232,160,69,0.12);--adim2:rgba(232,160,69,0.2);--text:#f0ebe3;--t2:#a09890;--t3:#6a6058;--green:#5daa7a;--gdim:rgba(93,170,122,0.15);--blue:#5b8fd4;--bdim:rgba(91,143,212,0.15);--red:#d46060;--rdim:rgba(212,96,96,0.15);--r:12px;--rsm:8px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6;-webkit-tap-highlight-color:transparent}
+header{position:sticky;top:0;z-index:200;background:rgba(15,14,12,0.94);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:0 1.25rem;display:flex;align-items:center;justify-content:space-between;height:54px}
+.logo{display:flex;align-items:center;gap:9px}
+.logo-mark{width:30px;height:30px;border-radius:7px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#1a1814;flex-shrink:0}
+.logo-text{font-size:14px;font-weight:700;letter-spacing:-0.3px}
+.logo-sub{font-size:10px;color:var(--t3)}
+.hdate{font-size:11px;color:var(--t3);font-family:'DM Mono',monospace}
+.nav{display:flex;border-bottom:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav-tab{padding:10px 16px;font-size:13px;font-weight:500;color:var(--t2);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s;display:flex;align-items:center;gap:5px;user-select:none}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+main{padding:1.25rem;max-width:1100px;margin:0 auto}
+.sec{display:none}
+.sec.active{display:block}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:1.25rem}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rsm);padding:12px 14px}
+.stat-n{font-size:22px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent)}
+.stat-l{font-size:11px;color:var(--t3);margin-top:1px}
+.badge{font-size:11px;padding:2px 8px;border-radius:20px;font-family:'DM Mono',monospace;font-weight:500;white-space:nowrap}
+.ba{background:var(--adim2);color:var(--accent)}
+.bg{background:var(--gdim);color:var(--green)}
+.bb{background:var(--bdim);color:var(--blue)}
+.br{background:var(--rdim);color:var(--red)}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem 1.5rem;margin-bottom:.875rem}
+.card-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px}
+.card-title{font-size:14px;font-weight:500;display:flex;align-items:center;gap:7px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem}
+.fbtn{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--t2);transition:all .15s;white-space:nowrap;user-select:none}
+.fbtn:hover{border-color:var(--border2);color:var(--text)}
+.fbtn.on{background:var(--adim2);border-color:var(--accent);color:var(--accent)}
+.search-wrap{position:relative;margin-bottom:1rem}
+.search-input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px 9px 36px;color:var(--text);font-size:14px;font-family:'Noto Sans KR',sans-serif;outline:none;transition:border-color .2s}
+.search-input:focus{border-color:var(--border2)}
+.search-input::placeholder{color:var(--t3)}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:14px;pointer-events:none}
+.menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.menu-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.125rem;cursor:pointer;transition:border-color .2s;user-select:none}
+.menu-card:hover{border-color:var(--border2)}
+.menu-card.selected{border-color:var(--accent);background:var(--bg4)}
+.menu-name{font-size:14px;font-weight:500;margin-bottom:4px}
+.menu-cat{font-size:11px;color:var(--t3);margin-bottom:8px}
+.ing-chip{font-size:11px;background:var(--bg2);color:var(--t2);padding:2px 6px;border-radius:4px;border:1px solid var(--border)}
+.menu-ing-list{display:flex;gap:4px;flex-wrap:wrap}
+.chk{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.chk.on{background:var(--accent);border-color:var(--accent)}
+.chk.on::after{content:'✓';font-size:10px;color:#1a1814;font-weight:700}
+.tbl-wrap{overflow-x:auto;border-radius:var(--rsm)}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11px;font-weight:500;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--bg3)}
+td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.015)}
+.amt{font-family:'DM Mono',monospace;color:var(--accent);font-weight:500}
+.dish-tags{display:flex;gap:4px;flex-wrap:wrap}
+.dish-tag{font-size:11px;background:var(--bg3);color:var(--t2);padding:2px 6px;border-radius:4px;border:1px solid var(--border)}
+.proc-item{display:flex;gap:12px;align-items:flex-start;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);padding:12px 14px;margin-bottom:6px}
+.proc-num{width:24px;height:24px;border-radius:50%;background:var(--adim2);color:var(--accent);font-size:12px;font-weight:700;font-family:'DM Mono',monospace;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.proc-action{font-size:14px;font-weight:500;margin-bottom:2px}
+.saving{font-size:11px;color:var(--green);background:var(--gdim);padding:2px 8px;border-radius:10px;display:inline-block;margin-top:5px}
+.order-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px}
+.ord-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.125rem;transition:border-color .2s;cursor:pointer;user-select:none}
+.ord-card:hover{border-color:var(--border2)}
+.ord-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.ord-name{font-size:14px;font-weight:500}
+.ord-meta{font-size:11px;color:var(--t3);margin-top:2px}
+.ord-items{list-style:none}
+.ord-items li{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--t2);padding:5px 0;border-bottom:1px solid var(--border)}
+.ord-items li:last-child{border-bottom:none;color:var(--text)}
+.ord-qty{font-family:'DM Mono',monospace;font-size:12px;color:var(--accent);background:var(--adim);padding:1px 6px;border-radius:4px}
+.ord-foot{font-size:11px;color:var(--t3);margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;justify-content:space-between}
+.upload-zone{border:1.5px dashed var(--border2);border-radius:var(--r);padding:2rem;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg2);margin-bottom:1rem}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:var(--adim)}
+.up-icon{font-size:2rem;margin-bottom:8px}
+.up-title{font-size:15px;font-weight:500;margin-bottom:4px}
+.up-hint{font-size:12px;color:var(--t3)}
+.sample-link{color:var(--accent);cursor:pointer;text-decoration:underline}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--rsm);font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text);transition:all .15s;font-family:'Noto Sans KR',sans-serif;user-select:none}
+.btn:hover{background:var(--bg3)}
+.btn-a{background:var(--accent);border-color:var(--accent);color:#1a1814}
+.btn-a:hover{background:var(--accent2);border-color:var(--accent2)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.empty{text-align:center;padding:3rem 1rem;color:var(--t3)}
+.empty-icon{font-size:2.5rem;margin-bottom:8px;opacity:.5}
+.empty-title{font-size:15px;color:var(--t2);margin-bottom:4px}
+.pbar-wrap{margin-bottom:1rem}
+.pbar-label{font-size:11px;color:var(--t3);display:flex;justify-content:space-between;margin-bottom:4px}
+.pbar{height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.pbar-fill{height:100%;background:var(--green);border-radius:3px;transition:width .3s}
+.sdot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:3px}
+.sdot-g{background:var(--green)}.sdot-a{background:var(--accent)}.sdot-b{background:var(--blue)}
+.dlabel{font-size:11px;font-weight:500;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin:1.25rem 0 .75rem}
+.dlabel:first-child{margin-top:0}
+.recipe-text{font-size:13px;color:var(--t2);line-height:1.8;background:var(--bg3);border-radius:var(--rsm);padding:1rem;white-space:pre-wrap;border-left:3px solid var(--accent)}
+.date-filter-bar{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:.875rem 1.25rem;margin-bottom:.875rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.date-input{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);padding:5px 8px;color:var(--text);font-size:12px;outline:none;font-family:'Noto Sans KR',sans-serif}
+.date-input:focus{border-color:var(--border2)}
+@keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.sec.active>*{animation:fi .2s ease both}
+.sec.active>*:nth-child(2){animation-delay:.04s}
+.sec.active>*:nth-child(3){animation-delay:.08s}
+
+.stock-ok{color:var(--green)}.stock-low{color:var(--accent)}.stock-empty{color:var(--red)}
+.modal-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px}
+.modal-label{color:var(--t3);min-width:90px}
+.modal-val{color:var(--text);text-align:right;flex:1}
+.sub-badge{font-size:10px;padding:1px 6px;border-radius:10px;background:var(--bdim);color:var(--blue);font-family:'DM Mono',monospace}
+.session-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:2px}
+@media print{
+  header,.nav,.filters,.btn,.upload-zone,.date-filter-bar,
+  #print-btn-area,.no-print{display:none!important}
+  body{background:#fff;color:#000;font-size:12pt}
+  .print-target{display:block!important}
+  .card{border:1px solid #ccc;break-inside:avoid}
+  .recipe-text{color:#333;border-left:3px solid #999}
+  .amt{color:#333}
+}
+.print-btn{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;
+  font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg3);color:var(--t2);transition:all .15s;font-family:'Noto Sans KR',sans-serif}
+.print-btn:hover{color:var(--text);border-color:var(--accent)}
+@media(max-width:600px){header{padding:0 1rem}main{padding:1rem}.stats{grid-template-columns:repeat(2,1fr)}.menu-grid,.order-grid{grid-template-columns:1fr}.card{padding:1rem}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="logo-mark">바</div>
+    <div><div class="logo-text">바비야기 수원점</div><div class="logo-sub">운영 관리 시스템</div></div>
+  </div>
+  <div class="hdate" id="hdate"></div>
+</header>
+<div class="nav">
+  <div class="nav-tab active" onclick="showTab('recipe')">🥘 메뉴 선택</div>
+  <div class="nav-tab" onclick="showTab('ingredients')">🛒 식재료 목록</div>
+  <div class="nav-tab" onclick="showTab('process')">⚡ 조리 공정</div>
+  <div class="nav-tab" onclick="showTab('orders')">📦 주문 관리</div>
+  <div class="nav-tab" onclick="showTab('stock')">📊 재고 관리</div>
+</div>
+<main>
+
+<!-- TAB1: 메뉴 선택 -->
+<div class="sec active" id="tab-recipe">
+  <div class="stats">
+    <div class="stat"><div class="stat-n">175</div><div class="stat-l">전체 메뉴</div></div>
+    <div class="stat"><div class="stat-n">73</div><div class="stat-l">판매중</div></div>
+    <div class="stat"><div class="stat-n" id="st-sel" style="color:var(--green)">0</div><div class="stat-l">오늘 선택</div></div>
+    <div class="stat"><div class="stat-n" id="st-ing">0</div><div class="stat-l">필요 식재료</div></div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:8px">
+    <div style="font-size:15px;font-weight:500">📋 오늘 만들 메뉴를 선택하세요</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="saveSelection()">💾 저장</button>
+      <button class="btn btn-sm" onclick="loadSelection()">📂 불러오기</button>
+      <button class="btn btn-sm" onclick="clearSelection()">초기화</button>
+      <button class="btn btn-sm" onclick="printAllSelected()">🖨️ 전체 인쇄</button>
+      <button class="btn btn-sm btn-a" onclick="applySelection()">✓ 공정·식재료 생성 →</button>
+    </div>
+  </div>
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input class="search-input" id="menuSearch" placeholder="메뉴명 또는 재료 검색..." oninput="filterMenus()">
+  </div>
+  <div class="filters" id="catFilters"></div>
+  <div class="menu-grid" id="menuGrid"></div>
+</div>
+
+<!-- TAB2: 식재료 목록 -->
+<div class="sec" id="tab-ingredients">
+  <div id="ing-empty" class="empty">
+    <div class="empty-icon">🛒</div>
+    <div class="empty-title">메뉴를 먼저 선택하세요</div>
+    <div>선택한 메뉴의 식재료가 자동으로 합산됩니다</div>
+    <br><button class="btn" onclick="showTab('recipe')">← 메뉴 선택으로</button>
+  </div>
+  <div id="ing-content" style="display:none">
+    <div class="stats" id="ing-stats"></div>
+    <div class="card">
+      <div class="card-hd">
+        <div class="card-title">🛒 구매 식재료 목록</div>
+        <button class="btn btn-sm" onclick="printIngredients()">🖨️ 인쇄</button>
+      </div>
+      <div class="filters" id="ing-filters"></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>식재료</th><th>총 필요량</th><th>사용 메뉴</th></tr></thead>
+          <tbody id="ing-table"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB3: 조리 공정 -->
+<div class="sec" id="tab-process">
+  <div id="process-empty" class="empty">
+    <div class="empty-icon">⚡</div>
+    <div class="empty-title">메뉴를 먼저 선택하세요</div>
+    <div>메뉴 선택 탭에서 오늘 만들 메뉴를 고르면<br>최적화된 조리 공정이 자동으로 생성됩니다</div>
+    <br><button class="btn" onclick="showTab('recipe')">← 메뉴 선택으로</button>
+  </div>
+  <div id="process-content" style="display:none">
+    <div class="stats" id="proc-stats"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:1.25rem 0 .75rem">
+    <div class="dlabel" style="margin:0">🔥 통합 전처리 — 한번에 처리 가능한 재료</div>
+    <button class="btn btn-sm no-print" onclick="printProcess()">🖨️ 공정 인쇄</button>
+  </div>
+    <div class="card" id="proc-combined"></div>
+    <div class="dlabel">📋 메뉴별 조리법</div>
+    <div id="proc-recipes"></div>
+  </div>
+</div>
+
+<!-- TAB4: 주문 관리 -->
+<div class="sec" id="tab-orders">
+  <!-- 상단 툴바: 항상 표시 -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem;flex-wrap:wrap;gap:8px">
+    <div style="font-size:15px;font-weight:500">📦 주문 관리
+      <span id="ord-total-badge" style="font-size:12px;color:var(--t3);font-weight:400;margin-left:6px"></span>
+      <span id="sync-badge" style="font-size:10px;padding:1px 7px;border-radius:8px;margin-left:6px;font-weight:500"></span>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="openImportModal()">+ 엑셀 추가</button>
+      <button class="btn btn-sm" onclick="printAllOrders()">🖨️ 인쇄</button>
+      <button class="btn btn-sm" style="color:var(--red);border-color:var(--red)" onclick="confirmResetOrders()">🗑️ 전체 초기화</button>
+    </div>
+  </div>
+
+  <!-- 임포트 히스토리 -->
+  <div id="ord-import-history" style="display:none;margin-bottom:.875rem"></div>
+
+  <!-- 빈 상태 -->
+  <div id="ord-empty-state" class="empty" style="display:none">
+    <div class="empty-icon">📦</div>
+    <div class="empty-title">주문 데이터가 없습니다</div>
+    <div style="margin-bottom:1rem">엑셀 파일을 업로드해서 시작하세요</div>
+    <button class="btn btn-a" onclick="openImportModal()">+ 엑셀 파일 업로드</button>
+    <div style="margin-top:.75rem">
+      <span class="sample-link" onclick="loadSampleOrders(event)">샘플 주문으로 시작하기</span>
+    </div>
+  </div>
+
+  <!-- 주문 목록 (데이터 있을 때) -->
+  <div id="ord-content" style="display:none">
+    <div class="stats" id="ord-stats"></div>
+    <div id="ord-date-groups"></div>
+    <div class="date-filter-bar">
+      <div style="font-size:13px;font-weight:500;white-space:nowrap">📅 배송일</div>
+      <input type="date" id="filter-from" class="date-input" onchange="applyAllFilters()">
+      <span style="color:var(--t3);font-size:12px">~</span>
+      <input type="date" id="filter-to" class="date-input" onchange="applyAllFilters()">
+      <button class="btn btn-sm" style="color:var(--accent);border-color:var(--accent)" onclick="setTodayFilter()">다음 배송일</button>
+      <button class="btn btn-sm" onclick="clearDateFilter()">전체</button>
+      <span id="filter-label" style="font-size:11px;color:var(--green)"></span>
+    </div>
+    <div style="display:flex;border-bottom:1px solid var(--border);margin-bottom:.75rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none">
+      <div class="nav-tab active" id="ordtab-all" onclick="switchOrdTab('all',this)" style="font-size:12px;padding:8px 14px">전체</div>
+      <div class="nav-tab" id="ordtab-sub5" onclick="switchOrdTab('sub5',this)" style="font-size:12px;padding:8px 14px">🔄 정기 5회</div>
+      <div class="nav-tab" id="ordtab-sub8" onclick="switchOrdTab('sub8',this)" style="font-size:12px;padding:8px 14px">🔄 정기 8회</div>
+      <div class="nav-tab" id="ordtab-sub12" onclick="switchOrdTab('sub12',this)" style="font-size:12px;padding:8px 14px">🔄 정기 12회</div>
+      <div class="nav-tab" id="ordtab-single" onclick="switchOrdTab('single',this)" style="font-size:12px;padding:8px 14px">📦 단품</div>
+    </div>
+    <div class="filters" style="margin-bottom:.75rem">
+      <button class="fbtn on" onclick="filterOrdStatus('all',this)">전체</button>
+      <button class="fbtn" onclick="filterOrdStatus('pending',this)">⏳ 준비중</button>
+      <button class="fbtn" onclick="filterOrdStatus('ready',this)">✅ 완료</button>
+      <button class="fbtn" onclick="filterOrdStatus('배송',this)">🚚 배송</button>
+      <button class="fbtn" onclick="filterOrdStatus('픽업',this)">🏪 픽업</button>
+    </div>
+    <div class="pbar-wrap">
+      <div class="pbar-label"><span>포장 진행률</span><span id="ord-prog-lbl">0/0</span></div>
+      <div class="pbar"><div class="pbar-fill" id="ord-pbar" style="width:0%"></div></div>
+    </div>
+    <div class="order-grid" id="ord-grid"></div>
+  </div>
+</div>
+
+<!-- 임포트 모달 -->
+<div id="import-modal" style="display:none;position:fixed;inset:0;z-index:998;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);overflow-y:auto" onclick="closeImportModal(event)">
+  <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:16px;max-width:460px;margin:3rem auto;padding:1.5rem;position:relative" onclick="event.stopPropagation()">
+    <button onclick="closeImportModal()" style="position:absolute;top:1rem;right:1rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t2);cursor:pointer;padding:4px 10px;font-size:13px">✕</button>
+    <div style="font-size:16px;font-weight:700;margin-bottom:1.25rem">📥 주문 파일 추가</div>
+    <div class="upload-zone" id="import-zone" onclick="document.getElementById('ordFile').click()" ondragover="doDrag(event,this)" ondragleave="doDragLeave(event,this)" ondrop="doDropImport(event)" style="margin-bottom:1rem">
+      <input type="file" id="ordFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleOrdFile(event)">
+      <div class="up-icon">📂</div>
+      <div class="up-title">파일 선택 또는 드래그</div>
+      <div class="up-hint">xlsx, xls, csv 지원</div>
+    </div>
+    <div style="font-size:11px;color:var(--t3);line-height:1.8;background:var(--bg3);border-radius:6px;padding:.75rem 1rem">
+      📌 <strong style="color:var(--t2)">지원 컬럼</strong><br>
+      주문번호 · 주문일시 · 주문자명 · 휴대폰 · 주소<br>
+      상품정보(상세) · 결제금액 · 알레르기 · 보냉가방<br>
+      공동현관비밀번호 · 메모
+    </div>
+    <div style="margin-top:1rem;text-align:center">
+      <span class="sample-link" onclick="loadSampleOrders(event);closeImportModal()">샘플 주문으로 테스트하기</span>
+    </div>
+  </div>
+</div>
+
+<!-- 주문 편집 모달 -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);overflow-y:auto" onclick="closeEditModal(event)">
+  <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:16px;max-width:520px;margin:2rem auto;padding:1.5rem;position:relative" onclick="event.stopPropagation()">
+    <button onclick="closeEditModal()" style="position:absolute;top:1rem;right:1rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t2);cursor:pointer;padding:4px 10px;font-size:13px">✕</button>
+    <div style="font-size:16px;font-weight:700;margin-bottom:1.25rem">✏️ 주문 수정</div>
+    <div id="edit-modal-content"></div>
+    <div style="display:flex;gap:8px;margin-top:1.25rem">
+      <button onclick="saveEditModal()" class="btn btn-a" style="flex:1;justify-content:center">💾 저장</button>
+      <button onclick="deleteOrder()" class="btn" style="color:var(--red);border-color:var(--red);padding:7px 14px">🗑️ 삭제</button>
+      <button onclick="closeEditModal()" class="btn" style="padding:7px 14px">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- TAB5: 재고 관리 -->
+<div class="sec" id="tab-stock">
+  <div class="card">
+    <div class="card-hd">
+      <div class="card-title">📊 재고 관리</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm" onclick="addStockItem()">+ 항목 추가</button>
+        <button class="btn btn-sm" onclick="saveStock()">💾 저장</button>
+      </div>
+    </div>
+    <div class="filters" id="stock-cat-filters">
+      <button class="fbtn on" onclick="filterStock('전체',this)">전체</button>
+      <button class="fbtn" onclick="filterStock('육류',this)">🥩 육류</button>
+      <button class="fbtn" onclick="filterStock('채소',this)">🥦 채소</button>
+      <button class="fbtn" onclick="filterStock('해산물',this)">🦐 해산물</button>
+      <button class="fbtn" onclick="filterStock('유제품',this)">🧀 유제품</button>
+      <button class="fbtn" onclick="filterStock('소스/양념',this)">🫙 소스/양념</button>
+      <button class="fbtn" onclick="filterStock('기타',this)">기타</button>
+    </div>
+    <div class="tbl-wrap" style="margin-top:.75rem">
+      <table>
+        <thead><tr><th>식재료</th><th>카테고리</th><th>재고량</th><th>단위</th><th>최소재고</th><th>상태</th><th></th></tr></thead>
+        <tbody id="stock-table"></tbody>
+      </table>
+    </div>
+  </div>
+  <!-- 주문 기반 소진 예측 -->
+  <div class="card" style="margin-top:.875rem">
+    <div class="card-hd">
+      <div class="card-title">📉 오늘 필요량 vs 재고</div>
+      <div style="font-size:12px;color:var(--t3)">메뉴 선택 후 자동 계산</div>
+    </div>
+    <div id="stock-needed-empty" style="color:var(--t3);font-size:13px;padding:.5rem 0">메뉴 선택 탭에서 공정을 생성하면 자동으로 표시됩니다</div>
+    <div id="stock-needed" style="display:none">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>식재료</th><th>필요량</th><th>현재 재고</th><th>상태</th></tr></thead>
+          <tbody id="stock-needed-table"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 주문 상세 모달 -->
+<div id="ord-modal" style="display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);overflow-y:auto" onclick="closeOrdModal(event)">
+  <div id="ord-modal-box" style="background:var(--bg2);border:1px solid var(--border2);border-radius:16px;max-width:480px;margin:3rem auto;padding:1.5rem;position:relative" onclick="event.stopPropagation()">
+    <button onclick="closeOrdModal()" style="position:absolute;top:1rem;right:1rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t2);cursor:pointer;padding:4px 10px;font-size:13px">✕ 닫기</button>
+    <div id="ord-modal-content"></div>
+    <div style="display:flex;gap:8px;margin-top:1.25rem;flex-wrap:wrap">
+      <button id="modal-pending-btn" onclick="setOrdStatusFromModal('pending')" class="btn" style="flex:1;justify-content:center;min-width:80px;background:var(--rdim);border-color:var(--red);color:var(--red)">⏳ 준비중</button>
+      <button id="modal-ready-btn" onclick="setOrdStatusFromModal('ready')" class="btn btn-a" style="flex:1;justify-content:center;min-width:80px">✅ 완료</button>
+      <button onclick="if(currentModalOrdId)openEditModal(currentModalOrdId)" class="btn" style="padding:7px 12px" title="수정">✏️</button>
+      <button onclick="if(currentModalOrdId)printOrder(currentModalOrdId)" class="btn" style="padding:7px 12px" title="인쇄">🖨️</button>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// ===================== DATA =====================
+const ALL_MENUS = [{"menu": "2색 수제소세지", "category": "일품메뉴", "price": 7000, "recipe": "1.닭가슴살은 챠퍼에 다져서 요리한끗+생강비책넣고 밑간해준다.\n2.꼬마새송이는 데쳐서 빠르게 찬물에 헹궈낸뒤 챠퍼에 다져서 물기를 짜준다.\n3.당근과 브로콜리고 챠퍼에 다져주고 물기를 쨘다\n4.(색상구별)모든재료를 한곳에 섞은후 전분가루와 쌀가루로 점도를 잡아준다.\n5.종이호일엘 말아서 찜기에 쪄준다.", "on_sale": "O", "container": "타원용기 500ml", "ingredients": [{"name": "닭가슴살", "amount": 120.0, "unit": "g"}, {"name": "꼬마새송이", "amount": 50.0, "unit": "g"}, {"name": "당근", "amount": 30.0, "unit": "g"}, {"name": "브로콜리", "amount": 30.0, "unit": "g"}]}, {"menu": "가자미쑥국", "category": "국", "price": 6000, "recipe": "가자미살은 뼈를 제거한 뒤 끓는 물에 살짝 데쳐 한입 크기로 준비한다.\n무는 한마디 크기로 썰고, 두부는 손톱 크기로 썰어 준비한다. 쑥은 깨끗이 씻어 준비한다.\n냄비에 채수 250ml를 넣고 무를 먼저 넣어 충분히 끓여 단맛을 끌어낸다.\n가자미살과 두부를 넣고 한소끔 끓이며 요리한끗으로 간을 맞춘다.\n마지막에 쑥을 넣고 10~20초 정도만 끓인 뒤 바로 불을 끄고 마무리한다.", "on_sale": "", "container": "타원용기 500ml", "ingredients": [{"name": "가자미살", "amount": 60.0, "unit": "g"}, {"name": "무", "amount": 40.0, "unit": "g"}, {"name": "쑥", "amount": 30.0, "unit": "g"}, {"name": "두부", "amount": 20.0, "unit": "g"}]}, {"menu": "감자명란국", "category": "국", "price": 6000, "recipe": "감자는 한마디 크기로 썰어 준비하고, 두부는 손톱 크기로 썰어둔다.\n냄비에 채수 250ml를 넣고 감자를 먼저 넣어 충분히 끓여준다.\n감자가 부드럽게 익으면 두부를 넣고 한소끔 더 끓인다.\n명란은 껍질을 제거한 뒤 잘게 풀어 넣고, 약불에서 짧게 끓여 마무리한다", "on_sale": "O", "container": "타원용기 500ml", "ingredients": [{"name": "감자", "amount": 120.0, "unit": "g"}, {"name": "명란", "amount": 30.0, "unit": "g"}, {"name": "두부", "amount": 20.0, "unit": "g"}]}, {"menu": "감자명란크림사라다", "category": "냠냠메뉴", "price": 5000, "recipe": "1.감자를 충분히 익혀서 뜨거울때 으깨준다.\n2.명란을 껍질을 제거해주고 마를 강판에 갈아준다.\n3.옥수수콘은 그대로 사용하고 당근은 챠퍼에 다진후 채수에 살짝볶은뒤 넣어준다. 원당+소금+한끗으로 간을해준뒤 쿠킹크림으로 점도를 잡아준다.", "on_sale": "X", "container": "타원용기 500ml", "ingredients": [{"name": "감자", "amount": 100.0, "unit": "g"}, {"name": "명란", "amount": 10.0, "unit": "g"}, {"name": "쿠킹크림", "amount": 30.0, "unit": "g"}, {"name": "마", "amount": 10.0, "unit": "g"}, {"name": "옥수수콘", "amount": 20.0, "unit": "g"}, {"name": "당근", "amount": 10.0, "unit": "g"}]}, {"menu": "건홍합케일영양밥", "category": "영양밥", "price": 0, "recipe": "", "on_sale": "X", "container": "타원용기 500ml", "ingredients": [{"name": "건홍합", "amount": 20.0, "unit": "g"}, {"name": "케일", "amount": 40.0, "unit": "g"}, {"name": "콜리플라워", "amount": 30.0, "unit": "g"}, {"name": "참깨", "amount": 3.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}]}, {"menu": "기버터관자감바스", "category": "프리미엄메뉴", "price": 10000, "recipe": "굴은 흐르는 물에 살살 흔들어 씻고 체에 밭쳐 물기 제거.\n새우는 껍질과 내장 제거 후 살짝 데쳐 미리 익혀둔다.\n팬에 올리브유와 기버터를 함께 녹인 후\n굴을 넣고 중약불에서 살짝 익혀준다.\n익힌 새우, 반으로 자른 방울토마토를 함께 넣어\n기버터 풍미가 충분히 배어들게 팬 뚜껑을 덮고 1분간 더 뜸들이듯 익혀준다.\n★요리한끗+파프리카분말 넣어주는게 포인트", "on_sale": "O", "container": "타원용기 500ml", "ingredients": [{"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "굴", "amount": 130.0, "unit": "g"}, {"name": "새우", "amount": 100.0, "unit": "g"}, {"name": "방울토마토", "amount": 40.0, "unit": "g"}, {"name": "올리브유", "amount": 25.0, "unit": "g"}, {"name": "기버터", "amount": 25.0, "unit": "g"}]}, {"menu": "기버터취나물불고기", "category": "일품메뉴", "price": 7000, "recipe": "1.취나물은 씻어서 두마디길이로 썰어둔다.\n2.불고기거리는 생강비책과 요리한끗으로 밑간을 해둔다.\n3.냄비에 기버터두르고 양파를 볶다가 고기넣어주고 채수를 부어 익혀준다.\n3.당근 (중간채썰기)애느타리 찟어주기 고기가 반정도 익으면 고기양념장+누룩젓갈 넣어주고 익힌다.\n4.야채가 거의다 익어갈때 취나물을 넣고 뚜껑닫아 뜸들이듯 익혀준다.", "on_sale": "O", "container": "타원용기 500ml", "ingredients": [{"name": "취나물", "amount": 30.0, "unit": "g"}, {"name": "한돈불고기", "amount": 80.0, "unit": "g"}, {"name": "양파", "amount": 40.0, "unit": "g"}, {"name": "당근", "amount": 30.0, "unit": "g"}, {"name": "애느타리", "amount": 30.0, "unit": "g"}]}, {"menu": "기버터토달볶", "category": "튼튼메뉴", "price": 6000, "recipe": "", "on_sale": "X", "container": "타원용기 500ml", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "방울토마토", "amount": 50.0, "unit": "g"}, {"name": "계란", "amount": 70.0, "unit": "g"}, {"name": "양배추", "amount": 30.0, "unit": "g"}, {"name": "완두콩", "amount": 10.0, "unit": "g"}]}, {"menu": "누룽지 닭다리백숙", "category": "일품메뉴", "price": 7000, "recipe": "닭다리살은 끓는 물에 생강비책을 넣어 데쳐 잡내를 제거해준다. 데친 닭은 건져서 요리한끗으로 밑간해둔다.\n냄비에 밑간한 닭고기, 채썬 표고버섯, 물기 제거한 우엉, 누룽지를 함께 넣고 물 또는 채수 250ml를 부어준다.\n중불에서 끓이다가 누룽지가 퍼지고 재료들이 모두 익을 때까지 뚜껑을 덮고 약불로 15~20분 더 끓여준다.\n국물의 맛이 우러나고 재료가 부드럽게 익으면 완성한다. 기호에 따라 순맛간장 아주 소량 또는 들기름 한 방울을 더해 마무리한다.", "on_sale": "X", "container": "타원용기 500ml", "ingredients": [{"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "닭다리1개", "amount": 120.0, "unit": "g"}, {"name": "누룽지", "amount": 40.0, "unit": "g"}, {"name": "표고버섯", "amount": 30.0, "unit": "g"}, {"name": "우엉", "amount": 20.0, "unit": "g"}]}, {"menu": "다시마버터감자&한돈찹스테이크", "category": "일품메뉴", "price": 7000, "recipe": "감자는 찐 후 으깨고, 밥다시마를 넣고 풀어준 다음, 무염버터를 넣어 섞어 고소한 다시마버터감자를 만든다 (원당+요리한끗_\n한돈 안심은 끓는 물에 생강비책을 풀고 1차 데친 뒤, 건져서 요리한끗으로 밑간해준다.\n팬에 소량의 기름을 두르고 양파, 당근, 파프리카를 먼저 볶다가 밑간한 고기를 넣고 함께 볶아 익혀준다.\n채소와 고기의 단맛이 어우러질 정도로만 볶아 마무리한 뒤, 다시마버터감자 옆에 곁들여 한 접시 구성으로 플레이팅한다.", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "감자", "amount": 40.0, "unit": "g"}, {"name": "밥다시마", "amount": 3.0, "unit": "g"}, {"name": "버터", "amount": 10.0, "unit": "g"}, {"name": "한돈안심", "amount": 80.0, "unit": "g"}, {"name": "양파", "amount": 40.0, "unit": "g"}, {"name": "파프리카", "amount": 10.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}]}, {"menu": "달래된장크림치킨스테이크", "category": "일품메뉴", "price": 7000, "recipe": "1.닭등살은 생강비책 요리한끗 넣어서 밑간해준다.\n2.꼬마새송이와 감자 양배추는 엄지 한마디크기로 깍둑썰기해주고,\n각재료별로 끊는물에 데친후 식혀둔다.\n3.순맛된장1:채수2:크림4 비율로 넣고 소스를만들어준다 \n(이때 달래도 총량의 1/3 을 넣어 같이 갈아준다)\n4.닭등살은 채수+기버터 넣고 익혀주고 한김식힌후 모든야채와 된장크림넣고\n달래 다져서 넣어준다 (데코 할양은 따로 뺴둔다)", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 순맛된장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "닭등살", "amount": 100.0, "unit": "g"}, {"name": "꼬마새송이", "amount": 40.0, "unit": "g"}, {"name": "감자", "amount": 30.0, "unit": "g"}, {"name": "양배추", "amount": 30.0, "unit": "g"}, {"name": "달래", "amount": 15.0, "unit": "g"}, {"name": "쿠킹크림", "amount": 60.0, "unit": "g"}]}, {"menu": "달래슈비함바그", "category": "일품메뉴", "price": 7000, "recipe": "1.새우살을 다져주고 한돈다짐육과 섞어서 생강비책과 요리한끗으로 밑간을 해둔다.\n2.끓는물에 새송이버섯을 익혀내고 빠르게 찬물에 헹군뒤 챠퍼에 다져준다.\n3.두부도 끓는물에 익히고 으깨서 물기를 짜준다.\n4.달래고 잘게 다진후 모든재료를 섞어준다.\n★점도는 쌀가루+전분가루로 잡아주는데 수분이 안잡힐때는 빵가루를 넣어주면 된다", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "달래", "amount": 10.0, "unit": "g"}, {"name": "한돈다짐육", "amount": 80.0, "unit": "g"}, {"name": "새우", "amount": 40.0, "unit": "g"}, {"name": "두부", "amount": 40.0, "unit": "g"}, {"name": "꼬마새송이", "amount": 50.0, "unit": "g"}]}, {"menu": "달콤메추리고구마조림", "category": "튼튼메뉴", "price": 0, "recipe": "고구마는 한마디크기 깍둑썰기해서 물에담궈둔다\n-메추리를 헹궈서 채에 받쳐둔다\n-고구마와 메추리가 잠기도록 채수를 넣고 맛간장한컵 원당 두스푼 요리한끗 두스푼 넣는다", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "메추리", "amount": 90.0, "unit": "g"}, {"name": "고구마", "amount": 100.0, "unit": "g"}, {"name": "꼬마새송이", "amount": 30.0, "unit": "g"}]}, {"menu": "닭고기매생이덮밥소스", "category": "덮밥소스", "price": 0, "recipe": "", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "닭안심살", "amount": 50.0, "unit": "g"}, {"name": "매생이", "amount": 20.0, "unit": "g"}, {"name": "배추", "amount": 30.0, "unit": "g"}, {"name": "무", "amount": 40.0, "unit": "g"}, {"name": "팽이버섯", "amount": 20.0, "unit": "g"}, {"name": "계란(선택)", "amount": 20.0, "unit": "g"}]}, {"menu": "닭고기무지개덮밥소스", "category": "덮밥소스", "price": 0, "recipe": "", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "닭안심살", "amount": 50.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "애호박", "amount": 30.0, "unit": "g"}, {"name": "숙주", "amount": 30.0, "unit": "g"}, {"name": "팽이", "amount": 20.0, "unit": "g"}]}, {"menu": "닭고기십자화과커리덮밥소스", "category": "덮밥소스", "price": 0, "recipe": "", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "닭가슴살", "amount": 30.0, "unit": "g"}, {"name": "브로콜리", "amount": 30.0, "unit": "g"}, {"name": "컬리플라워", "amount": 30.0, "unit": "g"}, {"name": "양배추", "amount": 20.0, "unit": "g"}]}, {"menu": "닭고기쑥크림범벅", "category": "튼튼메뉴", "price": 6000, "recipe": "닭등살은 생강비책 + 요리한끗으로 밑간한뒤 채수+기버터 넣고 중약불에 익혀준다\n감자는 작게 썰어 찐 뒤 으깨고, 양파는 잘게 다져 준비한다.\n쑥은 끓는 물에 짧게 데친 후 찬물에 헹궈 물기를 짜준다.\n팬에 엑스트라버진 올리브유를 살짝 두르고 양파를 먼저 볶다가 닭고기를 넣고 함께 볶는다.\n으깬 감자와 쑥+쿠킹크림을 넣고 약불에서 섞어가며 끓여 범벅 형태로 농도를 맞춘다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "닭등살", "amount": 70.0, "unit": "g"}, {"name": "감자", "amount": 40.0, "unit": "g"}, {"name": "쑥", "amount": 10.0, "unit": "g"}, {"name": "양파", "amount": 30.0, "unit": "g"}, {"name": "쿠킹크림", "amount": 60.0, "unit": "g"}]}, {"menu": "닭고기양송이들깨영양밥", "category": "영양밥", "price": 0, "recipe": "", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "닭등살", "amount": 50.0, "unit": "g"}, {"name": "양송이", "amount": 40.0, "unit": "g"}, {"name": "감자", "amount": 30.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}, {"name": "들깨가루", "amount": 5.0, "unit": "g"}]}, {"menu": "닭고기유채나물덮밥소스", "category": "덮밥소스", "price": 0, "recipe": "", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "닭안심", "amount": 40.0, "unit": "g"}, {"name": "유채나물", "amount": 30.0, "unit": "g"}, {"name": "컬리플라워", "amount": 20.0, "unit": "g"}, {"name": "팽이버섯", "amount": 20.0, "unit": "g"}]}, {"menu": "닭고기코코넛크림카레", "category": "튼튼메뉴", "price": 6000, "recipe": "닭등살은 기버터에 구어준다.반정도 익을때\n감자, 당근은 한마디 크기로 깍둑 썰고, 새송이버섯도 작게 썰어 넣어준다.\n채수를  넣고 끓이다가, 감자가 반쯤 익으면  코코넛크림을 넣는다.\n카레가루를 넣고 잘 저어가며 농도를 맞춘다.", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "닭등살", "amount": 50.0, "unit": "g"}, {"name": "감자", "amount": 40.0, "unit": "g"}, {"name": "당근", "amount": 30.0, "unit": "g"}, {"name": "새송이버섯", "amount": 30.0, "unit": "g"}, {"name": "카레", "amount": 10.0, "unit": "g"}, {"name": "카레", "amount": 10.0, "unit": "g"}]}, {"menu": "닭고기통들깨깻잎영양밥", "category": "영양밥", "price": 0, "recipe": "", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "닭안심", "amount": 50.0, "unit": "g"}, {"name": "애느타리버섯", "amount": 30.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}, {"name": "통들깨", "amount": 3.0, "unit": "g"}, {"name": "무", "amount": 40.0, "unit": "g"}]}, {"menu": "닭고기핑크덮밥소스", "category": "덮밥소스", "price": 6000, "recipe": "", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "닭안심살", "amount": 40.0, "unit": "g"}, {"name": "감자", "amount": 30.0, "unit": "g"}, {"name": "비트", "amount": 20.0, "unit": "g"}, {"name": "양배추", "amount": 20.0, "unit": "g"}, {"name": "팽이버섯", "amount": 10.0, "unit": "g"}, {"name": "비트분말", "amount": 1.0, "unit": "g"}]}, {"menu": "닭다리살뭇국", "category": "국", "price": 6000, "recipe": "", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "닭다리살", "amount": 50.0, "unit": "g"}, {"name": "무", "amount": 90.0, "unit": "g"}, {"name": "잔파", "amount": 5.0, "unit": "g"}]}, {"menu": "닭안심매생이크림덮밥소스", "category": "덮밥소스", "price": 0, "recipe": "", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "닭안심", "amount": 40.0, "unit": "g"}, {"name": "쿠킹크림", "amount": 60.0, "unit": "g"}, {"name": "동결건조매생이", "amount": 0.5, "unit": "g"}, {"name": "양배추", "amount": 30.0, "unit": "g"}, {"name": "팽이버섯", "amount": 20.0, "unit": "g"}]}, {"menu": "닭안심병아리콩커리영양밥", "category": "영양밥", "price": 6000, "recipe": "", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "닭안심", "amount": 40.0, "unit": "g"}, {"name": "병아리콩", "amount": 10.0, "unit": "g"}, {"name": "브로콜리", "amount": 30.0, "unit": "g"}, {"name": "콜리플라워", "amount": 30.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}, {"name": "커리", "amount": 10.0, "unit": "g"}]}, {"menu": "닭완자봄동국", "category": "국", "price": 0, "recipe": "", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "닭다리살", "amount": 60.0, "unit": "g"}, {"name": "감자", "amount": 40.0, "unit": "g"}, {"name": "당근", "amount": 15.0, "unit": "g"}, {"name": "봄동", "amount": 40.0, "unit": "g"}, {"name": "무", "amount": 40.0, "unit": "g"}]}, {"menu": "당근곤약무조림", "category": "냠냠메뉴", "price": 5000, "recipe": "1.당근과 무는 엄지 한마디 크기로 깍둑썰기해준다.\n2. 곤약도 같은 크기로 썰어주고 모두 냄비에 담는다\n3.반정도 잠길만큼 채수를 부어주고 맛간장과 고기양념장을 넣고중불고 끓인다.\n4.채수가 졸여지고 야채가 다익을때 부족한 간은 한끗으로 해준다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 순한고기양념장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "당근", "amount": 60.0, "unit": "g"}, {"name": "무", "amount": 100.0, "unit": "g"}, {"name": "곤약", "amount": 40.0, "unit": "g"}]}, {"menu": "당근죽순볶음", "category": "튼튼메뉴", "price": 6000, "recipe": "죽순은 끓는 물에 한 번 데쳐 특유의 향을 제거한 뒤 한마디 크기로 썰어준다.\n당근, 양파, 양배추는 유아식 기준으로 한마디 크기 또는 채썰기로 준비한다.\n팬에 엑스트라버진 올리브유를 두르고 양파와 당근을 먼저 볶아 단맛을 끌어낸다.\n죽순과 양배추를 넣고 물 2큰술과 요리한끗 소량을 더해 중약불에서 부드럽게 볶아준다.\n재료가 충분히 익고 수분이 살짝 남은 상태에서 불을 끄고 마무리한다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "당근", "amount": 70.0, "unit": "g"}, {"name": "죽순", "amount": 80.0, "unit": "g"}, {"name": "양파", "amount": 30.0, "unit": "g"}, {"name": "양배추", "amount": 40.0, "unit": "g"}]}, {"menu": "대추야자동파육", "category": "일품메뉴", "price": 0, "recipe": "앞다리살+삼겹을 생강비책 두른채수에 익혀준다.(고기가잠길만큼) 채수가 반정도 줄어들면 맛간장1:고기양념3:요리한끗2 넣고 중약불로 익혀준다 채수는 추가가능\n-청경채는 세척후 반으로 길게썰어주고 끓는물에 제친후 빠르게 찬불로 헹궈준다\n-고기가 거의익을때 채수반컵+대추야자를 채퍼에다져준뒤 넣어 졸여준다", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "한돈앞다리살", "amount": 120.0, "unit": "g"}, {"name": "청경채", "amount": 60.0, "unit": "g"}, {"name": "대추야자", "amount": 50.0, "unit": "g"}]}, {"menu": "데리야끼가지스테이크", "category": "튼튼메뉴", "price": 6000, "recipe": "1.가지는 세마디길이 통으로 잘라서 찜기에 3분간 쪄준다.\n2.속이 익은 가지를 쪼개서 넙적하게 펴주고, 꼬마새송이는 관자처럼 자른뒤 벌집모양을 만들어준다.\n2.데리야끼 소스를 발라서 오븐에 구워준다.\n3.용기에 구운가지와 새송이버섯을 넣고 에그스크럼블과 잔파를 올려 마무리한다", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "계란", "amount": 30.0, "unit": "g"}, {"name": "가지", "amount": 120.0, "unit": "g"}, {"name": "새송이버섯", "amount": 40.0, "unit": "g"}, {"name": "잔파", "amount": 10.0, "unit": "g"}]}, {"menu": "된장돈지루영양밥", "category": "영양밥", "price": 0, "recipe": "", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "한돈얇은삼겹", "amount": 50.0, "unit": "g"}, {"name": "연근", "amount": 30.0, "unit": "g"}, {"name": "우엉", "amount": 10.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}, {"name": "무", "amount": 40.0, "unit": "g"}]}, {"menu": "들기름숙주게살무침", "category": "냠냠메뉴", "price": 5000, "recipe": "1. 숙주는 끓는 물에 30초간 데친 뒤 찬물에 헹구고 물기를 꼭 짜서 준비한다.\n2. 오이와 당근은 굵은채썰기해주고\n3. 게살은 손으로 잘게 찢어두고, 실온 제품일 경우 바로 사용하고 냉장 제품일 경우 중탕해 준비한다.\n4. 볼에 숙주, 오이, 게살을 담고 들기름 0.3작은술, 순맛간장 소량을 넣어 조물조물 무쳐 마무리한다.", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "숙주", "amount": 100.0, "unit": "g"}, {"name": "오이", "amount": 30.0, "unit": "g"}, {"name": "게살", "amount": 10.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}]}, {"menu": "맑은 닭다리곰탕", "category": "국", "price": 0, "recipe": "", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "양파", "amount": 50.0, "unit": "g"}, {"name": "대파", "amount": 60.0, "unit": "g"}, {"name": "닭다리살", "amount": 70.0, "unit": "g"}]}, {"menu": "맑은어묵탕", "category": "국", "price": 0, "recipe": "", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "어묵", "amount": 50.0, "unit": "g"}, {"name": "무", "amount": 70.0, "unit": "g"}, {"name": "쑥갓", "amount": 3.0, "unit": "g"}]}, {"menu": "멘치볼까츠&당근크림소스", "category": "일품메뉴", "price": 7000, "recipe": "1.한돈다짐육+한우다짐육을 생강비책+요리한끗 넣고 밑간해준다.\n2.꼬마새송이는 끓는물에 데치고 빠르게 찬물에 헹군뒤 챠퍼에 다져서 물기를 꼭 짜준다.\n3.새송이와 다짐육을 섞어서 점도를 잡는데 쌀가루와 전분가루 부족하면 빵가루를 넣어 잡는다.\n4.오븐에 굽거나 튀겨낸다.\n5.당근은 올리브유에 채썰어서 볶아낸뒤 쿠킹크림+전분가로 함께 믹서에 갈아준다 (소금으로 간)", "on_sale": "X", "container": "사각반죽용기 400ml / 115파이 350ml 스크류 용기", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "한돈다짐육", "amount": 50.0, "unit": "g"}, {"name": "한우다짐육", "amount": 30.0, "unit": "g"}, {"name": "꼬마새송이", "amount": 40.0, "unit": "g"}, {"name": "당근", "amount": 40.0, "unit": "g"}, {"name": "쿠킹크림", "amount": 60.0, "unit": "g"}]}, {"menu": "멸치콩콩영양밥", "category": "영양밥", "price": 6000, "recipe": "", "on_sale": "O", "container": "사각반죽용기 400ml / 115파이 350ml 스크류 용기", "ingredients": [{"name": "멸치", "amount": 30.0, "unit": "g"}, {"name": "병아리콩", "amount": 10.0, "unit": "g"}, {"name": "완두콩", "amount": 10.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}, {"name": "밥다시마", "amount": 2.0, "unit": "g"}]}, {"menu": "명란감자크로켓&수제케찹", "category": "일품메뉴", "price": 7000, "recipe": "1. 감자는 푹 쪄서 으깨고, 마는 강판에 갈거나 곱게 으깨어 감자에 섞어준다. 여기에 껍질을 제거한 명란 속살을 넣고 고루 섞는다.\n2. 반죽을 유아 한 입 크기의 크로켓 모양으로 동글납작하게 성형한 뒤,빵가루를 입히고 팬에 기름 소량을 두르고 중약불에서 앞뒤로 노릇하게 구워준다. (또는 에어프라이어 사용 가능)\n[토마토소스는 -수제소스 참고]", "on_sale": "X", "container": "사각반죽용기 400ml / 115파이 350ml 스크류 용기", "ingredients": [{"name": "명란", "amount": 20.0, "unit": "g"}, {"name": "마", "amount": 40.0, "unit": "g"}, {"name": "감자", "amount": 90.0, "unit": "g"}, {"name": "토마토", "amount": 50.0, "unit": "g"}]}, {"menu": "명란마요연근명태볶음", "category": "튼튼메뉴", "price": 6000, "recipe": "", "on_sale": "X", "container": "사각반죽용기 400ml / 115파이 350ml 스크류 용기", "ingredients": [{"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "명란", "amount": 20.0, "unit": "g"}, {"name": "두부마요 혹은 코코넛마요", "amount": 50.0, "unit": "g"}, {"name": "연근", "amount": 100.0, "unit": "g"}, {"name": "명태채", "amount": 30.0, "unit": "g"}]}, {"menu": "명란청경채덮밥소스", "category": "덮밥소스", "price": 0, "recipe": "", "on_sale": "X", "container": "사각반죽용기 400ml / 115파이 350ml 스크류 용기", "ingredients": [{"name": "명란", "amount": 50.0, "unit": "g"}, {"name": "배추", "amount": 30.0, "unit": "g"}, {"name": "팽이버섯", "amount": 20.0, "unit": "g"}, {"name": "당근", "amount": 10.0, "unit": "g"}, {"name": "청경채", "amount": 40.0, "unit": "g"}]}, {"menu": "명태살쑥국", "category": "국", "price": 0, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "명태살", "amount": 50.0, "unit": "g"}, {"name": "쑥", "amount": 20.0, "unit": "g"}, {"name": "팽이버섯", "amount": 10.0, "unit": "g"}, {"name": "두부", "amount": 40.0, "unit": "g"}]}, {"menu": "목초양갈비토마토찜", "category": "프리미엄메뉴", "price": 10000, "recipe": "양갈비살은 기름기와 힘줄 제거 후 생강비책+요리한끗으로 밑간한다.\n감자, 당근, 토마토, 옥수수는 깍둑썰기.\n팬에 토마토, 토마토퓨레, 당근을 넣고 중약불에서 끓여준다.\n익으면 감자, 옥수수를 넣고 함께 끓인다.\n양고기를 소스에 넣고 뚜껑을 덮어 약불에서 10분간 조려준다.\n재료가 모두 익고 소스가 걸쭉해지면 완성.", "on_sale": "X", "container": "", "ingredients": [{"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "양갈비살", "amount": 120.0, "unit": "g"}, {"name": "감자", "amount": 30.0, "unit": "g"}, {"name": "절단찐옥수수", "amount": 30.0, "unit": "g"}, {"name": "당근", "amount": 30.0, "unit": "g"}, {"name": "토마토", "amount": 40.0, "unit": "g"}, {"name": "토마토퓨레", "amount": 80.0, "unit": "g"}]}, {"menu": "목초육가지된장영양밥", "category": "영양밥", "price": 6000, "recipe": "백미는 깨끗이 씻어 30분 이상 불려 준비한다.\n목초육은 채수에 요리한끗 + 생강비책을 넣고 먼저 익힌 후 잘게 다져준다.\n가지, 양배추, 새송이버섯, 무는 한마디 크기로 썰어 준비한다.\n솥 또는 밥솥에 불린 백미와 채소, 다진 목초육을 넣고 평소보다 물을 약간 적게 잡아 밥을 지어준다.\n밥이 거의 완성될 때 순된장 0.5작은술을 채수에 풀어 넣고 가볍게 섞어 뜸을 들인다.", "on_sale": "O", "container": "", "ingredients": [{"name": "목초육", "amount": 30.0, "unit": "g"}, {"name": "가지", "amount": 40.0, "unit": "g"}, {"name": "양배추", "amount": 20.0, "unit": "g"}, {"name": "새송이버섯", "amount": 20.0, "unit": "g"}, {"name": "무", "amount": 10.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}]}, {"menu": "목초육감자콩나물국", "category": "국", "price": 0, "recipe": "목초육은 따로 채수에 익혀두고 감자는 굵은채썰기해준다\n-콩나물은 두마디길이로 썰어준다\n-채수에 목초육+감자넣고 맛간장+누룩젓갈+한끗넣고 끓이다가 콩나물넣어주고 뚜껑닫아 끓이고 뜸들인다.", "on_sale": "O", "container": "", "ingredients": [{"name": "목초육", "amount": 40.0, "unit": "g"}, {"name": "콩나물", "amount": 50.0, "unit": "g"}, {"name": "감자", "amount": 80.0, "unit": "g"}]}, {"menu": "목초육강된장&양배추찜", "category": "국", "price": 6000, "recipe": "1.목초육은 생강비책 + 요리한끗으로 밑간한 뒤, 끓는 물에 한 번 데쳐 잡내를 제거하고 잘게 다져준다.\n2.무, 감자, 애호박은 한마디 크기로 깍둑썰기 하고, 새송이버섯도 같은 크기로 썰어 준비한다.\n3.냄비에 엑스트라버진 올리브유를 살짝 두르고 목초육을 먼저 볶다가 채소들을 넣고 함께 볶아준다.\n4.채수 와 순맛된장 , 요리한끗을 넣고 약불에서 자작하게 끓여 강된장 형태로 농도를 잡아준다.\n5.양배추는 찜기에 부드럽게 쪄 한입 크기로 썰어 접시에 담고, 완성된 강된장을 곁들여 제공한다.", "on_sale": "O", "container": "", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 순맛된장", "amount": 0, "unit": "g"}, {"name": "목초육", "amount": 40.0, "unit": "g"}, {"name": "무", "amount": 50.0, "unit": "g"}, {"name": "감자", "amount": 40.0, "unit": "g"}, {"name": "새송이버섯", "amount": 40.0, "unit": "g"}, {"name": "애호박", "amount": 40.0, "unit": "g"}]}, {"menu": "목초육고사리들깨덮밥소스", "category": "덮밥소스", "price": 0, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "목초육", "amount": 40.0, "unit": "g"}, {"name": "고사리", "amount": 10.0, "unit": "g"}, {"name": "숙주", "amount": 20.0, "unit": "g"}, {"name": "당근", "amount": 10.0, "unit": "g"}, {"name": "배추", "amount": 30.0, "unit": "g"}]}, {"menu": "목초육곤드레들깨덮밥소스", "category": "덮밥소스", "price": 6000, "recipe": "", "on_sale": "O", "container": "", "ingredients": [{"name": "목초육", "amount": 40.0, "unit": "g"}, {"name": "양배추", "amount": 50.0, "unit": "g"}, {"name": "무", "amount": 30.0, "unit": "g"}, {"name": "팽이버섯", "amount": 20.0, "unit": "g"}, {"name": "곤드레", "amount": 15.0, "unit": "g"}, {"name": "들깨", "amount": 3.0, "unit": "g"}]}, {"menu": "목초육구좌당근크로켓", "category": "일품메뉴", "price": 7000, "recipe": "목초육은 생강비책 + 요리한끗으로 밑간한 뒤 끓는 물에 데쳐 잘게 다져준다.\n꼬마새송이버섯은 끓는 물에 데친 후 찬물에 헹궈 챠퍼에 다지고 물기를 꼭 짜준다.\n당근은 잘게 다져 찜기에 익히고, 양배추도 데쳐 잘게 썰어 물기를 제거한다.\n준비한 재료를 모두 섞어 반죽한 뒤 한입 크기로 동글납작하게 성형한다.\n겉면에 빵가루를 입힌 뒤, 팬에 엑스트라버진 올리브유 또는 기버터를 두르고 약불에서 굴려가며 노릇하게 구워 완성한다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "목초육", "amount": 60.0, "unit": "g"}, {"name": "꼬마새송이", "amount": 40.0, "unit": "g"}, {"name": "당근", "amount": 50.0, "unit": "g"}, {"name": "빵가루", "amount": 20.0, "unit": "g"}, {"name": "양배추", "amount": 30.0, "unit": "g"}]}, {"menu": "목초육냉이된장국", "category": "국", "price": 6000, "recipe": "목초육은 생강비책 + 요리한끗을 넣은 끓는 물에 데쳐 잘게 다져준다.\n무와 감자는 한마디 크기로 썰고, 애호박과 새송이버섯도 같은 크기로 썰어 준비한다.\n냄비에 채수 250ml를 넣고 무와 감자를 먼저 넣어 끓이다가, 나머지 채소와 목초육을 넣는다.\n순된장 0.5작은술을 채수에 풀어 넣고 끓이며, 마지막에 냉이와 두부를 넣어 한소끔 더 끓인다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "목초육", "amount": 40.0, "unit": "g"}, {"name": "무", "amount": 30.0, "unit": "g"}, {"name": "감자", "amount": 30.0, "unit": "g"}, {"name": "애호박", "amount": 30.0, "unit": "g"}, {"name": "새송이버섯", "amount": 20.0, "unit": "g"}, {"name": "냉이", "amount": 10.0, "unit": "g"}, {"name": "두부", "amount": 20.0, "unit": "g"}]}, {"menu": "목초육달래덮밥소스", "category": "덮밥소스", "price": 6000, "recipe": "", "on_sale": "", "container": "사각반죽용기 300ml", "ingredients": [{"name": "목초육", "amount": 40.0, "unit": "g"}, {"name": "달래", "amount": 10.0, "unit": "g"}, {"name": "배추", "amount": 50.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}]}, {"menu": "목초육데리야끼가지구이", "category": "튼튼메뉴", "price": 6000, "recipe": "1.먼저 채수1:맛간장0.5:생강비책0.3:원당0.5 : 전분0.5넣고 중불에 끓이면서 데리야끼소스를 만들어준다. \n2.채수에 목초육을 익혀주고 애느타리버섯과 당근을 넣는다.\n3.반이상 익은시점에 반달썬 가지를 넣고 채수를 조금씩 넣으면서 증기로 익혀준다. \n4.가지가 반쯤익으면 데리야끼 소스를 넣어버무린뒤 뚜껑을 닫고 익혀준다.", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "목초육", "amount": 60.0, "unit": "g"}, {"name": "가지", "amount": 100.0, "unit": "g"}, {"name": "애느타리버섯", "amount": 20.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}]}, {"menu": "목초육동글만두전골", "category": "프리미엄메뉴", "price": 10000, "recipe": "1. 목초육은 생강비책+요리한끗으로 밑간해 익혀둔다.\n2. 배추,숙주,새송이 데친뒤 물기짜서 다져주 반마디 길이로 썰어준다\n3. 당면은 충분히 불린뒤 끓는물에 10초만 담그고 빠르게 찬물에 헹궈낸뒤 다져준다.\n4.위에 모든재료를 섞어주고 쌀가루로 점도를 잡아준다.\n5. 겉은 왕만두피로 이감싸주고 동그랗게 모양을 잡아 찜기에 쪄준다.\n6. 마지막에 사골국을 자작하게 깔고 만두를 4~5개 올려준뒤 쑥갓으로 데코한다.\n[양념-맛간장,요리한끗,누룩소금)", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "목초육", "amount": 110.0, "unit": "g"}, {"name": "당면", "amount": 40.0, "unit": "g"}, {"name": "배추", "amount": 30.0, "unit": "g"}, {"name": "숙주", "amount": 20.0, "unit": "g"}, {"name": "새송이", "amount": 20.0, "unit": "g"}, {"name": "사골국", "amount": 60.0, "unit": "g"}, {"name": "왕만두피", "amount": 20.0, "unit": "g"}, {"name": "쑥갓", "amount": 10.0, "unit": "g"}]}, {"menu": "목초육된장크림파스타", "category": "튼튼메뉴", "price": 6000, "recipe": "목초육은 생강비책 + 요리한끗으로 밑간한 뒤 끓는 물에 데쳐 잘게 다져준다.\n파스타면은 삶아 부드럽게 준비하고, 아이가 먹기 좋게 짧게 잘라준다.\n양파는 잘게 다져 준비한다.\n팬에 엑스트라버진 올리브유를 두르고 양파를 먼저 볶아 단맛을 끌어낸 뒤, 목초육을 넣어 함께 볶는다.\n쿠킹크림을 넣고 끓이다가 된장을 풀어 넣어 잘 섞어준다.\n삶은 파스타면을 넣고 소스와 잘 어우러지도록 섞어 마무리한다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "목초육", "amount": 40.0, "unit": "g"}, {"name": "파스타", "amount": 50.0, "unit": "g"}, {"name": "양파", "amount": 30.0, "unit": "g"}, {"name": "쿠킹크림", "amount": 70.0, "unit": "g"}, {"name": "된장", "amount": 10.0, "unit": "g"}]}, {"menu": "목초육두릅함바그", "category": "프리미엄메뉴", "price": 10000, "recipe": "1.목초다짐육은 생강비책+요리한끗으로 밑간을해둔다.\n2.꼬마새송이는 끓는물에 데친후 빠르게헹군뒤 챠퍼에 다지고 물기를짜준다.\n3.두릅도 손질해서 끓는물에 데쳐주고 챠퍼에 다진다\n4.양파도 다쳐주고 체에 받쳐 물기를 빼준다.\n5.모든재료 한번에 섞어서 쌀가루와 빵가루로 점도를 잡아준다.\n6.들기름 살짝둘러서 섞은뒤 모양잡아서 오븐에 구워준다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "목초육", "amount": 110.0, "unit": "g"}, {"name": "두릅", "amount": 40.0, "unit": "g"}, {"name": "꼬마새송이", "amount": 60.0, "unit": "g"}, {"name": "양파", "amount": 20.0, "unit": "g"}, {"name": "빵가루", "amount": 20.0, "unit": "g"}]}, {"menu": "목초육들깨깻잎덮밥소스", "category": "덮밥소스", "price": 6000, "recipe": "", "on_sale": "O", "container": "타원용기 500ml", "ingredients": [{"name": "목초육", "amount": 40.0, "unit": "g"}, {"name": "감자", "amount": 50.0, "unit": "g"}, {"name": "양배추", "amount": 30.0, "unit": "g"}, {"name": "새송이버섯", "amount": 30.0, "unit": "g"}, {"name": "들깨", "amount": 5.0, "unit": "g"}, {"name": "깻잎", "amount": 10.0, "unit": "g"}]}, {"menu": "목초육머위대들깨짐", "category": "튼튼메뉴", "price": 6000, "recipe": "★머위대는 전날미리 삶아서 껍질을 제거해둔다 혹은 데친머위대로 구매\n1.채수에 목초육을 익혀준다(요리한끗+생강비책)\n2.익은 고기는 따로 덜어내주고, 남은 채수에 올리브유 두른뒤 야채를 익혀준다. 이때 맛간장+누룩젓갈 넣어주고 채수를 자작하게 부어 익힌다. \n3.숙주는 채수가 끓으면 넣고 부족한 간은 미네랄소금으로 채운다.\n4.불끄고 들기름 한스푼+들깨가루 넣고 뚜껑닫아 뜸들여준다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "목초육", "amount": 40.0, "unit": "g"}, {"name": "머위대", "amount": 60.0, "unit": "g"}, {"name": "숙주", "amount": 30.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "애느타리버섯", "amount": 30.0, "unit": "g"}, {"name": "들깨가루", "amount": 3.0, "unit": "g"}]}, {"menu": "목초육멸치주먹밥키트", "category": "일품메뉴", "price": 7000, "recipe": "1.목초육은 채수에 볶듯이 익혀준다.\n2.무는 굵은채썰어서 원당1 소금1 절여두었다가 물기짜주고, 끓는물에 치차열매 넣고 식초와 원당 넣은후 한김식혀서 넣어준다.\n3.멸치는 고운채에 받쳐서 분순물빼주고 원당과 맛간장으로 볶아준다.\n4.계란은 올리브유 둘러서 에그스크럼블로 만들어준다", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "목초육", "amount": 50.0, "unit": "g"}, {"name": "멸치", "amount": 25.0, "unit": "g"}, {"name": "수제단무지", "amount": 60.0, "unit": "g"}, {"name": "계란", "amount": 50.0, "unit": "g"}]}, {"menu": "목초육무지개영양밥&달래장", "category": "영양밥", "price": 6000, "recipe": "", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "목초육다짐육", "amount": 30.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "연근", "amount": 20.0, "unit": "g"}, {"name": "애호박", "amount": 20.0, "unit": "g"}, {"name": "새송이버섯", "amount": 20.0, "unit": "g"}, {"name": "브로콜리", "amount": 20.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}, {"name": "달래", "amount": 5.0, "unit": "g"}]}, {"menu": "목초육뭇국", "category": "국", "price": 6000, "recipe": "목초육은 생강비책 + 요리한끗을 넣은 끓는 물에 데친 뒤 잘게 다져준다.\n무는 한마디 크기로 썰고, 두부도 손톱 크기로 썰어 준비한다. 잔파는 2~3cm 길이로 썬다.\n냄비에 채수 250ml를 넣고 무를 먼저 넣어 충분히 끓여 단맛을 끌어낸다.\n목초육과 두부를 넣고 한 번 더 끓인 뒤, 순맛간장 0.3작은술 또는 요리한끗으로 간을 맞춘다.\n마지막에 잔파를 넣고 한소끔 끓여 마무리한다", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "목초육", "amount": 40.0, "unit": "g"}, {"name": "무", "amount": 70.0, "unit": "g"}, {"name": "잔파", "amount": 10.0, "unit": "g"}, {"name": "두부", "amount": 20.0, "unit": "g"}]}, {"menu": "목초육미역국", "category": "국", "price": 0, "recipe": "", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "목초육", "amount": 50.0, "unit": "g"}, {"name": "건미역", "amount": 5.0, "unit": "g"}, {"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "목초육", "amount": 40.0, "unit": "g"}, {"name": "건미역", "amount": 5.0, "unit": "g"}]}, {"menu": "목초육배추만두&맛간장드레싱", "category": "프리미엄메뉴", "price": 10000, "recipe": "1.목초다짐육을 생강비책과 요리한끗으로 밑간을해둔다.\n2.당면은 불려둔다.\n3.숙주는 데쳐주고 나머지 야채들은 챠퍼에 다져준다.\n4.배추는 끓는물에 데친후 빠르게 찬물로 헹궈낸다.\n5.꼬마새송이도 데핀후 찬물로 헹구고 챠퍼에 다진후 물기를 짜준다.\n6.모든재료를 섞어서 전분가루+쌀가루로 점도를 잡아준다.\n7.찐 배추에 돌돌말아서 찜기에 쪄준다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "목초육", "amount": 100.0, "unit": "g"}, {"name": "배추", "amount": 70.0, "unit": "g"}, {"name": "당면", "amount": 10.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "부추", "amount": 3.0, "unit": "g"}, {"name": "애호박", "amount": 20.0, "unit": "g"}, {"name": "꼬마새송이", "amount": 40.0, "unit": "g"}]}, {"menu": "목초육버섯밥다시마영양밥", "category": "영양밥", "price": 6000, "recipe": "", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "목초육", "amount": 40.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}, {"name": "밥다시마", "amount": 2.0, "unit": "g"}, {"name": "무", "amount": 30.0, "unit": "g"}, {"name": "표고버섯", "amount": 20.0, "unit": "g"}, {"name": "팽이버섯", "amount": 20.0, "unit": "g"}, {"name": "애느타리버섯", "amount": 20.0, "unit": "g"}]}, {"menu": "목초육뿌리채소영양밥", "category": "영양밥", "price": 6000, "recipe": "", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "연근", "amount": 20.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "우엉", "amount": 20.0, "unit": "g"}, {"name": "무", "amount": 30.0, "unit": "g"}, {"name": "밥다시마", "amount": 2.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}, {"name": "목초육", "amount": 40.0, "unit": "g"}]}, {"menu": "목초육뿌리채소조림", "category": "튼튼메뉴", "price": 6000, "recipe": "", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "목초육", "amount": 60.0, "unit": "g"}, {"name": "당근", "amount": 50.0, "unit": "g"}, {"name": "연근", "amount": 50.0, "unit": "g"}, {"name": "우엉", "amount": 40.0, "unit": "g"}]}, {"menu": "목초육사골불고기", "category": "프리미엄메뉴", "price": 10000, "recipe": "목초육 앞다리살은 끓는 물에 생강비책을 넣고밑간해둔다\n양파, 당근, 애느타리버섯은 각각 유아가 먹기 굵은채썰기로 손질한다.\n사골국 50ml + 순맛간장 0.5작은술 + 유기원당 소량 + 요리한끗\n→ 한 번 끓여서 준비해두면 좋다.\n팬에 고기를 먼저 볶다가 익어갈 즈음 채소들을 넣고\n사골국을 부어 함께 자작하게 조려준다.\n마지막에 참기름 한 방울을 떨어뜨려 풍미를 더한다.", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "목초육앞다리살", "amount": 130.0, "unit": "g"}, {"name": "사골국", "amount": 50.0, "unit": "g"}, {"name": "애느타리버섯", "amount": 35.0, "unit": "g"}, {"name": "양파", "amount": 40.0, "unit": "g"}, {"name": "당근", "amount": 30.0, "unit": "g"}]}, {"menu": "목초육샤브샤브", "category": "일품메뉴", "price": 7000, "recipe": "냄비에 채수 +한끗+맛간장 끓여 샤브샤브 육수를 준비한다.\n배추, 청경채, 당근은 한마디 크기로 썰고, 팽이버섯은 밑동을 제거해 준비한다. 숙주는 깨끗이 씻어 준비한다.\n채수가 끓으면 당근과 배추를 먼저 넣어 부드럽게 익힌다.\n목초육 슬라이스는 끓는 육수에 한 장씩 넣어 빠르게 익혀 건져준다.\n나머지 채소들을 넣어 한소끔 끓인 후, 고기와 함께 건져 먹거나 국물과 함께 제공한다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "목초육슬라이스", "amount": 70.0, "unit": "g"}, {"name": "배추", "amount": 80.0, "unit": "g"}, {"name": "팽이버섯", "amount": 10.0, "unit": "g"}, {"name": "숙주", "amount": 20.0, "unit": "g"}, {"name": "청경채", "amount": 30.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}]}, {"menu": "목초육세발나물떡갈비", "category": "프리미엄메뉴", "price": 10000, "recipe": "끓는 물에 새송이를 30초간 데친 후바로 찬물에 헹궈 열기를 식힌 뒤 챠퍼에 곱게 다지고 물기를 꼭 짜준다.\n세발나물은 한마디크기로 썰어준다\n목초육 + 이베리코 다짐육에\n손질한 새송이, 세발나물, 요리한끗 소량을 넣고 잘 치대어 반죽한다.\n질감이 묽으면 으깬 두부나 감자전분을 1작은술 정도 추가해준다.\n아이 한 입 크기로 납작하게 빚어 팬에 구워준다.", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "목초육다짐", "amount": 130.0, "unit": "g"}, {"name": "이베리코다짐", "amount": 50.0, "unit": "g"}, {"name": "꼬마새송이", "amount": 70.0, "unit": "g"}, {"name": "세발나물", "amount": 40.0, "unit": "g"}]}, {"menu": "목초육순두부덮밥소스", "category": "덮밥소스", "price": 6000, "recipe": "", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "목초육", "amount": 40.0, "unit": "g"}, {"name": "순두부", "amount": 50.0, "unit": "g"}, {"name": "애호박", "amount": 30.0, "unit": "g"}, {"name": "느타리버섯", "amount": 20.0, "unit": "g"}, {"name": "양배추", "amount": 20.0, "unit": "g"}]}, {"menu": "목초육유니짜장", "category": "튼튼메뉴", "price": 6000, "recipe": "1.채수에 목초육먼저 익해준다(생강비책+요리한끗)\n2.모든재료는 한마디크기 깍둑썰기해준다.\n3.목초육익힌 상태에 올리브유 두르고 양파-감자-당근=애호박 순으로 넣고 익혀준다.\n4.채수에 짜장분말을 풀어서 넣고 농도를 맞춘다.", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "짜장분말", "amount": 15.0, "unit": "g"}, {"name": "목초육", "amount": 50.0, "unit": "g"}, {"name": "감자", "amount": 40.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "애호박", "amount": 30.0, "unit": "g"}, {"name": "양파", "amount": 40.0, "unit": "g"}, {"name": "옥수수콘", "amount": 20.0, "unit": "g"}]}, {"menu": "목초육컬리플라워함바그", "category": "프리미엄메뉴", "price": 10000, "recipe": "컬리플라워는 끓는 물에 1분간 데친 후 잘게 다져 식힌다.\n꼬마새송이는 끓는물에 데친후 빠르게 찬물에 식혀서 챠퍼에 다진후 물기를 짠다\n목초육은 생강비책 + 요리한끗으로 밑간해 준비한다.\n모든 재료를 볼에 넣고 잘 치대어 점성을 만든다.\n반죽이 묽으면 으깬 두부나 감자 전분 1작은술 정도로 농도를 조절한다.\n아이 한 입 크기로 납작하게 빚어준다 (지름 4~5cm, 두께 1cm 정도).\n팬에 기름 소량을 두르고 중약불에서 양면 노릇하게 구워준다.", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "목초육다짐", "amount": 120.0, "unit": "g"}, {"name": "컬리플라워", "amount": 60.0, "unit": "g"}, {"name": "꼬마새송이", "amount": 50.0, "unit": "g"}]}, {"menu": "목초육콜라비통들깨영양밥", "category": "영양밥", "price": 6000, "recipe": "", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "목초육", "amount": 30.0, "unit": "g"}, {"name": "콜라비 혹은 자색무", "amount": 50.0, "unit": "g"}, {"name": "표고버섯", "amount": 20.0, "unit": "g"}, {"name": "통들깨", "amount": 10.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}]}, {"menu": "목초육한돈라자냐", "category": "일품메뉴", "price": 7000, "recipe": "목초육은 생강비책 + 요리한끗으로 밑간한 뒤 끓는 물에 데쳐 잘게 다져준다.\n양파와 당근은 잘게 다져 준비한다.\n팬에 엑스트라버진 올리브유를 두르고 양파와 당근을 먼저 볶아 단맛을 끌어낸다.\n다진 목초육을 넣어 함께 볶은 뒤 토마토퓨레를 넣고 약불에서 끓여 소스를 만든다.\n라자냐 파스타는 미리 삶아 부드럽게 준비한다.\n용기에 라자냐 → 소스 → 라자냐 순으로 층층이 쌓은 뒤, 에어프라이어 또는 오븐에서 180도 5~7분 정도 익혀 완성한다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "목초육", "amount": 50.0, "unit": "g"}, {"name": "토마토퓨레", "amount": 50.0, "unit": "g"}, {"name": "양파", "amount": 30.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "토마토퓨레", "amount": 20.0, "unit": "g"}, {"name": "라자냐파스타", "amount": 30.0, "unit": "g"}]}, {"menu": "목초육한돈미나리함바그", "category": "일품메뉴", "price": 7000, "recipe": "목초육은 생강비책 + 요리한끗으로 밑간해 준비한다.\n꼬마새송이버섯은 끓는 물에 데친 후 찬물에 헹궈 챠퍼에 다지고 물기를 꼭 짜준다.\n감자는 쪄서 으깨고, 양파는 잘게 다져 준비한다.\n미나리는 끓는 물에 살짝 데친 뒤 물기를 제거하고 잘게 썬다.\n모든 재료를 볼에 넣고 치대어 반죽한 뒤, 납작한 함바그 형태로 빚어준다.\n팬에 엑스트라버진 올리브유 또는 기버터를 두르고 약불에서 앞뒤로 노릇하게 구워 완성한다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "목초육", "amount": 70.0, "unit": "g"}, {"name": "꼬마새송이버섯", "amount": 50.0, "unit": "g"}, {"name": "감자", "amount": 40.0, "unit": "g"}, {"name": "미나리", "amount": 20.0, "unit": "g"}, {"name": "양파", "amount": 20.0, "unit": "g"}]}, {"menu": "무지개어묵볶음", "category": "튼튼메뉴", "price": 6000, "recipe": "어묵은 끓는 물에 데쳐 기름기와 염도를 빼고, 나머지 채소는 손질하여 준비해 둔다.\n팬에 올리브유 두르고 양파, 당근부터 볶는다.(모든야채 굵은채썰기)\n당근이 부드러워지면 애호박, 파프리카, 애느타리, 어묵을 순서대로 넣고 볶아준다.\n순한간장 0.5작은술, 요리한끗 소량으로 간을 맞춘 뒤 불을 끈다.\n완성 후 통깨나 햄프씨드를 솔솔 뿌려 마무리한다.", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "어묵", "amount": 60.0, "unit": "g"}, {"name": "당근", "amount": 25.0, "unit": "g"}, {"name": "애호박", "amount": 25.0, "unit": "g"}, {"name": "양파", "amount": 25.0, "unit": "g"}, {"name": "애느타리", "amount": 30.0, "unit": "g"}, {"name": "파프리카", "amount": 25.0, "unit": "g"}]}, {"menu": "무지개오뎅볶음", "category": "튼튼메뉴", "price": 6000, "recipe": "오뎅은 끓는 물에 살짝 데쳐 기름기와 염도를 제거한 뒤 한입 크기로 썰어준다.\n양배추, 당근, 애호박은 한마디 크기 또는 채썰기로 준비하고, 애느타리버섯은 결대로 찢어준다.\n팬에 엑스트라버진 올리브유를 두르고 양파 없이 당근부터 볶아 단맛을 끌어낸다.\n애호박과 양배추를 넣고 볶다가, 오뎅과 애느타리버섯을 넣어 함께 볶아준다.\n물 2큰술과 요리한끗 소량, 순맛간장 0.5작은술을 넣어 자작하게 볶아 마무리한다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "오뎅", "amount": 70.0, "unit": "g"}, {"name": "양배추", "amount": 40.0, "unit": "g"}, {"name": "당근", "amount": 30.0, "unit": "g"}, {"name": "애호박", "amount": 30.0, "unit": "g"}, {"name": "애느타리버섯", "amount": 30.0, "unit": "g"}]}, {"menu": "미나리감자스프", "category": "국", "price": 6000, "recipe": "감자와 양파는 한마디 크기로 썰어 준비하고, 미나리는 끓는 물에 살짝 데친 뒤 잘게 썰어준다.\n냄비에 엑스트라버진 올리브유 또는 기버터를 두르고 양파를 먼저 볶아 단맛을 끌어낸다.\n감자를 넣고 함께 볶다가 물 100ml를 넣어 감자가 부드럽게 익을 때까지 끓인다.\n익힌 재료를 핸드블렌더로 곱게 갈아준다.\n다시 불에 올려 쿠킹크림과 우유를 넣고 끓이며 농도를 맞춘다.\n마지막에 미나리를 넣고 10~20초 정도만 끓여 향을 살려 마무리한다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "양파", "amount": 50.0, "unit": "g"}, {"name": "감자", "amount": 70.0, "unit": "g"}, {"name": "미나리", "amount": 20.0, "unit": "g"}, {"name": "쿠킹크림", "amount": 40.0, "unit": "g"}, {"name": "우유", "amount": 40.0, "unit": "g"}]}, {"menu": "미나리수제어묵", "category": "일품메뉴", "price": 7000, "recipe": "1.명태살,새우,오징어 모두 물기를 닦아준뒤 챠퍼로 다져준다.\n2.미나리는 잘게잘라주고 모든재료를 섞은뒤 쌀가루+쌀부침가루로 점도를 잡아준다.\n3.동글동글 빗어서 튀겨준다", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "명태살", "amount": 50.0, "unit": "g"}, {"name": "새우", "amount": 30.0, "unit": "g"}, {"name": "오징어", "amount": 20.0, "unit": "g"}, {"name": "꼬마새송이", "amount": 40.0, "unit": "g"}, {"name": "미나리", "amount": 25.0, "unit": "g"}]}, {"menu": "미나리숙주무침", "category": "냠냠메뉴", "price": 5000, "recipe": "숙주는 끓는 물에 30초간 데친 뒤 찬물에 헹궈 물기를 꼭 짜준다.\n미나리는 끓는 물에 살짝 데친 뒤 찬물에 헹궈 물기를 제거하고 2~3cm 길이로 썰어준다.\n당근은 아주 얇게 채썰어 데치거나 찜기에 살짝 익혀 준비한다.\n볼에 숙주, 미나리, 당근을 넣고 순맛간장 0.3작은술, 들기름 몇 방울, 요리한끗 소량을 넣어 가볍게 무쳐준다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "미나리", "amount": 80.0, "unit": "g"}, {"name": "숙주", "amount": 90.0, "unit": "g"}, {"name": "당근", "amount": 10.0, "unit": "g"}]}, {"menu": "미나리한돈불고기덮밥소스", "category": "덮밥소스", "price": 6000, "recipe": "", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "한돈다짐육", "amount": 50.0, "unit": "g"}, {"name": "애느타리버섯", "amount": 20.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "양배추", "amount": 20.0, "unit": "g"}, {"name": "애호박", "amount": 20.0, "unit": "g"}]}, {"menu": "미역줄기볶음", "category": "냠냠메뉴", "price": 0, "recipe": "미역줄기는 전날 물에 담궈 염장기를 빼준다\n-두마디길이로 썰어준다\n-당근은 중간채썰어준다\n-양파도 두마디길이 채썰어준다\n-올리브유 두르고 양파-미역줄기-당근순으로 볶아주고\n-한끗+원당+맛간장으로 간을해준다", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "미역줄기", "amount": 90.0, "unit": "g"}, {"name": "양파", "amount": 30.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}]}, {"menu": "미역줄기볶음&당근명란볶음", "category": "냠냠메뉴", "price": 5000, "recipe": "1.미역줄기는 전날 미리 물에 담궈두고 짠기를 빼준다.\n2.양파는 한마디 길이로 채썰어주고,팽이버섯도 한마디 길이로 썰어준다.\n3.팬에 올리브유 두르고 양파 먼저 볶다가 미역줄기볶아주고, 팽이버섯넣고 맛간장과 원당 요리한끗 으로 마무리\n\n----\n\n1.당근 굵은채썰어주고 명란은 껍질을제거해준다.\n2.팬에 올리브유 두르고 당근을 볶아준다가 명란넣고 익혀준다 부족한 간은 요리한끗으로 올려준다.", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "미역줄기", "amount": 60.0, "unit": "g"}, {"name": "양파", "amount": 20.0, "unit": "g"}, {"name": "팽이버섯", "amount": 10.0, "unit": "g"}, {"name": "당근", "amount": 70.0, "unit": "g"}, {"name": "명란", "amount": 10.0, "unit": "g"}]}, {"menu": "바지락들깨콩나물찜", "category": "튼튼메뉴", "price": 6000, "recipe": "바지락은 해감 후 끓는 물에 데쳐 껍질을 제거하고 속살만 준비해둔다.\n팬에 올리브유유 0.5작은술을 두르고 양파, 당근을 볶아준다.\n양파가 반투명해지면 팽이버섯과 콩나물을 넣고 중약불에서 함께 볶는다.\n바지락을 넣고 들깨가루 1작은술, 요리한끗으로 풍미를 더한 후 전분물로 점도잡아 살짝 졸여 마무리한다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바지락", "amount": 70.0, "unit": "g"}, {"name": "양파", "amount": 30.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "팽이버섯", "amount": 20.0, "unit": "g"}, {"name": "콩나물", "amount": 50.0, "unit": "g"}]}, {"menu": "바지락맑은국", "category": "국", "price": 6000, "recipe": "바지락은 충분히 해감한 뒤 끓는 물에 데쳐 껍질을 제거하고 살만 준비한다.\n무는 한마디 크기로 썰고, 두부는 손톱 크기로 썰어 준비한다. 쑥갓은 먹기 좋게 잘라둔다.\n냄비에 채수 250ml를 넣고 무를 먼저 넣어 충분히 끓여 단맛을 끌어낸다.\n바지락과 두부를 넣고 한소끔 끓인 뒤, 요리한끗 소량으로 간을 맞춘다.\n마지막에 쑥갓을 넣고 바로 불을 끄며 마무리한다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바지락", "amount": 40.0, "unit": "g"}, {"name": "무", "amount": 70.0, "unit": "g"}, {"name": "쑥갓", "amount": 10.0, "unit": "g"}, {"name": "두부", "amount": 20.0, "unit": "g"}]}, {"menu": "밥새우무지개톳영양밥", "category": "영양밥", "price": 0, "recipe": "", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "밥새우", "amount": 50.0, "unit": "g"}, {"name": "건톳", "amount": 3.0, "unit": "g"}, {"name": "애호박", "amount": 40.0, "unit": "g"}, {"name": "파프리카", "amount": 20.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}]}, {"menu": "밥새우미역두부영양밥", "category": "영양밥", "price": 0, "recipe": "", "on_sale": "X", "container": "사각반죽용기 400ml / 115파이 350ml 스크류 용기", "ingredients": [{"name": "밥새우", "amount": 50.0, "unit": "g"}, {"name": "건미역", "amount": 3.0, "unit": "g"}, {"name": "두부", "amount": 40.0, "unit": "g"}, {"name": "표고버섯", "amount": 20.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}]}, {"menu": "밥새우알배추된장덮밥소스", "category": "덮밥소스", "price": 6000, "recipe": "", "on_sale": "O", "container": "사각반죽용기 400ml / 115파이 350ml 스크류 용기", "ingredients": [{"name": "밥새우", "amount": 5.0, "unit": "g"}, {"name": "알배추", "amount": 60.0, "unit": "g"}, {"name": "무", "amount": 30.0, "unit": "g"}, {"name": "애느타리버섯", "amount": 30.0, "unit": "g"}, {"name": "파프리카", "amount": 20.0, "unit": "g"}]}, {"menu": "밥새우애호박두부덮밥소스", "category": "덮밥소스", "price": 0, "recipe": "", "on_sale": "X", "container": "사각반죽용기 400ml / 115파이 350ml 스크류 용기", "ingredients": [{"name": "밥새우", "amount": 4.0, "unit": "g"}, {"name": "애호박", "amount": 40.0, "unit": "g"}, {"name": "순두부", "amount": 50.0, "unit": "g"}, {"name": "팽이버섯", "amount": 20.0, "unit": "g"}]}, {"menu": "배추냉이된장무침", "category": "냠냠메뉴", "price": 5000, "recipe": "1.배추를 끓는물에 데치고 빠르게 찬물에 헹군다\n2.한마디길이로깍둑썰기 한뒤 물기를 짜준다.\n3.배추를 건진뜨거운 물에 얇은채썬 당근과 냉이를 넣고 열기로만 익혀준다.\n4. 냉이를 잘게 썰어 물기 짜주고 모든재료 한곳에담아서 한끗,맛간장,소금,참기름으로만 간을해준다.", "on_sale": "X", "container": "사각반죽용기 400ml / 115파이 350ml 스크류 용기", "ingredients": [{"name": "바비야기 순맛된장", "amount": 0, "unit": "g"}, {"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "배추", "amount": 120.0, "unit": "g"}, {"name": "당근", "amount": 10.0, "unit": "g"}, {"name": "냉이", "amount": 40.0, "unit": "g"}]}, {"menu": "배추크림찜닭", "category": "튼튼메뉴", "price": 6000, "recipe": "", "on_sale": "X", "container": "사각반죽용기 400ml / 115파이 350ml 스크류 용기", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "닭안심살", "amount": 50.0, "unit": "g"}, {"name": "닭등살", "amount": 50.0, "unit": "g"}, {"name": "배추", "amount": 60.0, "unit": "g"}, {"name": "양파", "amount": 30.0, "unit": "g"}]}, {"menu": "벚꽃로제찜닭", "category": "일품메뉴", "price": 7000, "recipe": "닭등살은 한입 크기로 썰어 생강비책 + 요리한끗으로 밑간한 뒤, 끓는 물에 한 번 데쳐 준비한다.\n감자, 고구마, 당근은 한마디 크기로 썰어 준비한다.\n팬 또는 냄비에 엑스트라버진 올리브유를 두르고 닭고기를 먼저 볶다가 채소를 넣어 함께 볶는다.\n물 80ml를 넣고 채소가 부드럽게 익을 때까지 끓인다.\n쿠킹크림을 넣고 약불에서 끓이며, 비트분말을 넣어 핑크빛 로제 색감을 만들어준다.\n재료가 부드럽게 익고 소스가 자작하게 어우러지면 불을 끄고 마무리한다.", "on_sale": "O", "container": "사각반죽용기 400ml / 115파이 350ml 스크류 용기", "ingredients": [{"name": "닭등살", "amount": 100.0, "unit": "g"}, {"name": "감자", "amount": 40.0, "unit": "g"}, {"name": "고구마", "amount": 30.0, "unit": "g"}, {"name": "당근", "amount": 30.0, "unit": "g"}, {"name": "쿠킹크림", "amount": 70.0, "unit": "g"}, {"name": "비트분말", "amount": 3.0, "unit": "g"}]}, {"menu": "벚꽃영양밥", "category": "영양밥", "price": 6000, "recipe": "", "on_sale": "O", "container": "사각반죽용기 400ml / 115파이 350ml 스크류 용기", "ingredients": [{"name": "닭안심", "amount": 40.0, "unit": "g"}, {"name": "비트", "amount": 10.0, "unit": "g"}, {"name": "새송이버섯", "amount": 30.0, "unit": "g"}, {"name": "브로콜리", "amount": 30.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}, {"name": "비트분말", "amount": 2.0, "unit": "g"}]}, {"menu": "보리새우마늘쫑볶음", "category": "냠냠메뉴", "price": 5000, "recipe": "보리새우는 마른 팬에 먼저 볶아 비린맛을 날리고 고소함을 살린다.\n마늘쫑은 질긴 부분을 제거하고 한마디 크기로 썬 뒤, 끓는 물에 살짝 데쳐 부드럽게 만든다.\n애느타리버섯은 결대로 찢어 준비한다.\n팬에 엑스트라버진 올리브유를 두르고 마늘쫑과 애느타리버섯을 먼저 볶는다.\n보리새우를 넣고 물 2큰술, 순맛간장 0.3~0.5작은술, 요리한끗 소량을 넣어 자작하게 볶는다.\n수분이 살짝 남은 상태에서 불을 끄고 마무리한다.", "on_sale": "", "container": "사각반죽용기 400ml / 115파이 350ml 스크류 용기", "ingredients": [{"name": "보리새우", "amount": 35.0, "unit": "g"}, {"name": "마늘쫑", "amount": 90.0, "unit": "g"}, {"name": "애느타리", "amount": 30.0, "unit": "g"}]}, {"menu": "봄채소크림리조또", "category": "영양밥", "price": 6000, "recipe": "", "on_sale": "O", "container": "사각반죽용기 400ml / 115파이 350ml 스크류 용기", "ingredients": [{"name": "닭안심살", "amount": 50.0, "unit": "g"}, {"name": "봄동", "amount": 10.0, "unit": "g"}, {"name": "잔파", "amount": 5.0, "unit": "g"}, {"name": "표고버섯", "amount": 10.0, "unit": "g"}, {"name": "크림", "amount": 50.0, "unit": "g"}, {"name": "냉이", "amount": 10.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}]}, {"menu": "브로콜리두부참깨소스무침", "category": "냠냠메뉴", "price": 5000, "recipe": "1. 브로콜리는 송이를 작게 나누어 찜기에 3~4분간 부드럽게 찐 후 한입 크기로 썰어 식혀둔다.\n2. 두부는 끓는 물에 데친 후 체에 밭쳐 물기를 제거하고 곱게 으깨준다.\n3. 으깬 두부, 갈은 참깨, 요거트 또는 코코넛크림을 섞어 고소한 무침용 소스를 만든다. (점도가 부족하면 요거트 양 조절)\n4. 찐 브로콜리에 만든 소스를 버무려 접시에 수분 없이 담아 마무리한다.\n견과류 알러지가 없다면 땅콩소스를 넣어주면 풍미가 좋다", "on_sale": "X", "container": "", "ingredients": [{"name": "브로콜리", "amount": 100.0, "unit": "g"}, {"name": "두부", "amount": 60.0, "unit": "g"}, {"name": "참깨", "amount": 5.0, "unit": "g"}, {"name": "요거트 혹은 코코넛크림", "amount": 40.0, "unit": "g"}]}, {"menu": "브로콜리코코넛무침", "category": "냠냠메뉴", "price": 5000, "recipe": "브로콜리는 송이만 잘라 찜기에 3~4분간 부드럽게 찐 뒤 한입 크기로 썰어 식혀준다.\n볼에 코코넛크림과 그릭요거트를 넣고 부드럽게 섞어 소스를 만들어준다.\n찐 브로콜리에 소스를 넣고 가볍게 버무려준다.\n수분 없이 차분하게 담아 마무리한다", "on_sale": "O", "container": "", "ingredients": [{"name": "브로콜리", "amount": 120.0, "unit": "g"}, {"name": "코코넛크림", "amount": 40.0, "unit": "g"}, {"name": "그릭요거트", "amount": 30.0, "unit": "g"}]}, {"menu": "새송이두부조림", "category": "냠냠메뉴", "price": 5000, "recipe": "1.두부를 두마디길이 직사각형 형태로 잘라주고, 팬에 올리브유 둘러 구워낸다\n2.채수에 맛간장과 요리한끗 원당을 넣고 새송이 를 좋여주다가\n3.두부를 넣어 중약불에 뚜껑닫고 익혀준다.", "on_sale": "X", "container": "", "ingredients": [{"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "꼬마새송이", "amount": 100.0, "unit": "g"}, {"name": "두부", "amount": 60.0, "unit": "g"}]}, {"menu": "새우갈릭빠에야", "category": "영양밥", "price": 6000, "recipe": "", "on_sale": "O", "container": "", "ingredients": [{"name": "새우", "amount": 50.0, "unit": "g"}, {"name": "건조마늘후레이크", "amount": 20.0, "unit": "g"}, {"name": "홍파프리카", "amount": 10.0, "unit": "g"}, {"name": "노랑파프리카", "amount": 10.0, "unit": "g"}, {"name": "애호박", "amount": 10.0, "unit": "g"}, {"name": "당근", "amount": 10.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}]}, {"menu": "새우무지개덮밥소스", "category": "덮밥소스", "price": 0, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "새우", "amount": 50.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "애호박", "amount": 20.0, "unit": "g"}, {"name": "파프리카", "amount": 20.0, "unit": "g"}, {"name": "팽이버섯", "amount": 20.0, "unit": "g"}, {"name": "부추", "amount": 5.0, "unit": "g"}]}, {"menu": "새우볼완자&매생이소스", "category": "일품메뉴", "price": 7000, "recipe": "1. 새우는 곱게 다지고, 찐감자와 애호박, 데친 꼬마새송이 다짐을 함께 섞어 완자 반죽을 만들어준다.\n2. 반죽을 유아 한입 크기의 동그란 새우볼로 성형한 뒤 전분가루를 입히고 팬에 기름 없이 노릇하게 굽거나, 에어프라이어 180도에서 8~10분간 익혀준다.\n3. 쿠킹크림+매생이+원당+전분가루 를 넣고 믹서에 갈아준다.\n4.매생이 소스는 약불에 익히면서 점도를 잡아주고 위에 새우완자볼을 올려준다.", "on_sale": "X", "container": "", "ingredients": [{"name": "새우", "amount": 70.0, "unit": "g"}, {"name": "꼬마새송이", "amount": 30.0, "unit": "g"}, {"name": "찐감자", "amount": 40.0, "unit": "g"}, {"name": "애호박", "amount": 10.0, "unit": "g"}, {"name": "매생이", "amount": 20.0, "unit": "g"}, {"name": "팽이버섯", "amount": 20.0, "unit": "g"}, {"name": "쿠킹크림", "amount": 60.0, "unit": "g"}]}, {"menu": "새우애호박들깨볶음", "category": "냠냠메뉴", "price": 5000, "recipe": "1.새우는 한마디크기 작은사이즈 사용\n2.애호박은 부채꼴로 썰어준다.(6등분)\n3.팬에 채수 한국자 올리브유 두른후 새우를 먼저 볶아준다.\n4. 새우육수가 나온물에 애호박을 넣고 중불에 익해준다\n(채수가 부족하면 채워넣는다)\n5.애호박이 거의다 익으면 요리한끗 과 간장을 넣고 뜸들인후 참기름과 들깨가루를 넣는다.", "on_sale": "O", "container": "", "ingredients": [{"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "새우", "amount": 50.0, "unit": "g"}, {"name": "애호박", "amount": 100.0, "unit": "g"}]}, {"menu": "새우톳영양밥", "category": "영양밥", "price": 6000, "recipe": "", "on_sale": "O", "container": "", "ingredients": [{"name": "새우", "amount": 40.0, "unit": "g"}, {"name": "톳", "amount": 5.0, "unit": "g"}, {"name": "무", "amount": 30.0, "unit": "g"}, {"name": "브로콜리", "amount": 30.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}]}, {"menu": "세발나물배추무침", "category": "냠냠메뉴", "price": 5000, "recipe": "배추는 끓는 물에 살짝 데친 뒤 한입 크기로 썰어 체에 밭쳐 물기를 꼭 짜준다.\n세발나물 꺠끗하게 헹궈낸뒤 물기를 털어내고 한마디 길이로 썰어준다.\n두 채소를 볼에 담고 순맛간장,요리한끗, 참기름 한 방울, 깨소금 소량을 넣어 조물조물 무쳐준다.", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "배추", "amount": 110.0, "unit": "g"}, {"name": "세발나물", "amount": 40.0, "unit": "g"}]}, {"menu": "세발나물치킨전", "category": "튼튼메뉴", "price": 6000, "recipe": "1. 닭안심은 생강비책  + 요리한끗 으로 밑간해두고, 챠퍼에 다져준다.\n2. 세발나물은 흐르는 물에 씻고 한마디 길이로 썰어준다.\n3. 팽이버섯은 밑동을 제거하고 2~3등분한 뒤 끓는 물에 데쳐 찬물에 헹궈 물기를 짠다.\n4. 준비한 닭안심, 세발나물, 팽이버섯을 볼에 넣고 계란 1개와 찹쌀가루(또는 부침가루) 10g을 넣어 반죽한다.\n5. 달군 팬에 엑스트라버진 올리브유를 살짝 두른 후, 한입 크기로 올려 약불에 노릇하게 부쳐준다.", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "닭안심", "amount": 70.0, "unit": "g"}, {"name": "세발나물", "amount": 40.0, "unit": "g"}, {"name": "팽이버섯", "amount": 30.0, "unit": "g"}]}, {"menu": "세발나물콩나물무침", "category": "냠냠메뉴", "price": 5000, "recipe": "1.콩나물 끓는 물에 살짝 데친 뒤 한입 크기로 썰어 체에 밭쳐 물기를 꼭 짜준다.\n2.세발나물 꺠끗하게 헹궈낸뒤 물기를 털어내고 한마디 길이로 썰어준다.\n3.당근은 얇은채썰기 해준다.\n4.모든재료를 볼에 담고 순맛간장,요리한끗, 참기름 한 방울, 깨소금 소량을 넣어 조물조물 무쳐준다.", "on_sale": "X", "container": "타원용기 500ml", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "배추", "amount": 110.0, "unit": "g"}, {"name": "세발나물", "amount": 30.0, "unit": "g"}, {"name": "당근", "amount": 10.0, "unit": "g"}]}, {"menu": "수제단무지 봄동무침", "category": "냠냠메뉴", "price": 5000, "recipe": "봄동은 한 장씩 떼어 흐르는 물에 씻은 뒤 끓는 물에 살짝 데치고, 찬물에 헹군 후 물기를 꼭 짜고 한입 크기로 썰어 준비한다.\n수제단무지는 아이가 먹기 편하도록 가늘게 채썰거나 잘게 다진다.\n데친 봄동과 수제단무지를 볼에 담고, 요리한끗 또는 유기원당을 아주 소량 더해 새콤한 맛을 살려 무쳐준다.", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "수제단무지", "amount": 60.0, "unit": "g"}, {"name": "봄동", "amount": 100.0, "unit": "g"}]}, {"menu": "시금치배추된장무침", "category": "냠냠메뉴", "price": 5000, "recipe": "시금치와 배추는 각각 끓는 물에 살짝 데쳐 찬물에 헹군 뒤 물기를 꼭 짜고, 유아가 먹기 좋은 크기로 잘게 썰어 준비한다.\n당근은 얇게 채썰어 찌거나 데쳐 부드럽게 익힌 후 함께 섞을 수 있도록 준비한다.\n세 가지 채소를 볼에 담고 순된장 0.3작은술, 들기름 한 방울, 요리한끗 소량을 넣고 조물조물 무쳐준다.\n접시에 수분 없이 차분히 담아 완성한다.", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "시금치", "amount": 60.0, "unit": "g"}, {"name": "배추", "amount": 90.0, "unit": "g"}, {"name": "당근", "amount": 30.0, "unit": "g"}]}, {"menu": "시금치오리목살찜", "category": "일품메뉴", "price": 7000, "recipe": "1. 오리목살은 끓는 물에 생강비책을 넣고 데친 뒤, 물기 제거 후 요리한끗으로 밑간해준다.\n2. 시금치는 살짝 데쳐 물기를 짜고 잘게 썰며, 새송이버섯도 아이가 먹기 좋은 크기로 썰어 준비한다.\n3. 팬 또는 냄비에 밑간한 오리목살, 버섯,  넣고 오리육수를 부은 후 뚜껑을 덮고 중불에서 5~7분간 자작하게 찐다.\n4. 수분이 어느 정도 졸아들고 고기가 부드럽게 익으면 불을 끄고 시금치를 넣어준뒤 따뜻하게 완성해준다.", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "오리목살", "amount": 80.0, "unit": "g"}, {"name": "시금치", "amount": 60.0, "unit": "g"}, {"name": "새송이버섯", "amount": 40.0, "unit": "g"}, {"name": "오리육수", "amount": 40.0, "unit": "g"}]}, {"menu": "아기팟타이", "category": "튼튼메뉴", "price": 6000, "recipe": "한돈 다짐육은 생강비책 + 요리한끗으로 밑간해 준비한다.\n쌀면은 미리 따뜻한 물에 불려 부드럽게 준비한다.\n숙주는 끓는 물에 살짝 데쳐 물기를 제거하고, 부추는 2~3cm 길이로 썰어둔다.\n팬에 엑스트라버진 올리브유를 두르고 고기를 먼저 볶다가 익으면 계란을 넣어 스크램블 형태로 섞어준다.\n불린 쌀면과 숙주, 부추를 넣고 물 2~3큰술과 요리한끗 소량을 더해 볶아준다.\n면과 재료가 잘 어우러지면 불을 끄고 따뜻하게 완성한다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "한돈다짐육", "amount": 50.0, "unit": "g"}, {"name": "숙주", "amount": 20.0, "unit": "g"}, {"name": "부추", "amount": 5.0, "unit": "g"}, {"name": "계란", "amount": 20.0, "unit": "g"}, {"name": "쌀면", "amount": 70.0, "unit": "g"}]}, {"menu": "아기해신탕", "category": "국", "price": 0, "recipe": "", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "닭등살", "amount": 30.0, "unit": "g"}, {"name": "안심", "amount": 30.0, "unit": "g"}, {"name": "전복", "amount": 30.0, "unit": "g"}, {"name": "새우", "amount": 40.0, "unit": "g"}, {"name": "부추", "amount": 5.0, "unit": "g"}]}, {"menu": "아스파라거스치킨크림덮밥소스", "category": "덮밥소스", "price": 6000, "recipe": "", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "닭안심", "amount": 40.0, "unit": "g"}, {"name": "아스파라거스", "amount": 30.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "팽이버섯", "amount": 10.0, "unit": "g"}, {"name": "양배추", "amount": 20.0, "unit": "g"}]}, {"menu": "안매운닭고기영양밥", "category": "영양밥", "price": 6000, "recipe": "", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "닭안심", "amount": 40.0, "unit": "g"}, {"name": "빨간장", "amount": 3.0, "unit": "g"}, {"name": "무", "amount": 30.0, "unit": "g"}, {"name": "브로콜리", "amount": 20.0, "unit": "g"}, {"name": "새송이버섯", "amount": 20.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}]}, {"menu": "안매운오삼불고기", "category": "튼튼메뉴", "price": 6000, "recipe": "오징어는 손질해 끓는 물에 살짝 데친 뒤 한입 크기로 썰어 준비하고, 한돈 불고기거리는 생강비책과 요리한끗으로 밑간해 10분간 재워둔다.\n팬에 기름을 두르지 않고 밑간한 고기를 먼저 볶다가 어느 정도 익으면 오징어를 함께 넣는다.\n채소(양파, 양배추, 당근)를 넣고 물 2~3큰술, 순한빨간장 0.5작은술, 요리한끗을 추가해 자작하게 볶는다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 순한빨간장", "amount": 0, "unit": "g"}, {"name": "오징어", "amount": 40.0, "unit": "g"}, {"name": "한돈불고기거리", "amount": 80.0, "unit": "g"}, {"name": "양파", "amount": 30.0, "unit": "g"}, {"name": "양배추", "amount": 40.0, "unit": "g"}, {"name": "당근", "amount": 30.0, "unit": "g"}]}, {"menu": "안매운오이무침", "category": "냠냠메뉴", "price": 5000, "recipe": "오이는 씨를 제거하고 한마디 길이 또는 얇은 채로 썰어 준비한다.\n당근은 아주 얇게 채썰고, 부추는 2~3cm 길이로 썰어준다.\n오이는 끓는 물에 5초 정도만 살짝 데친 뒤 찬물에 헹궈 아삭함을 유지하고 물기를 제거한다.\n볼에 오이, 당근, 부추를 넣고 순맛간장 0.3작은술, 들기름 몇 방울, 요리한끗 소량을 넣어 가볍게 무쳐준다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "오이", "amount": 150.0, "unit": "g"}, {"name": "당근", "amount": 10.0, "unit": "g"}, {"name": "부추", "amount": 5.0, "unit": "g"}]}, {"menu": "안매운제육볶음", "category": "튼튼메뉴", "price": 6000, "recipe": "1.한돈 불고기용 고기는 생강비책 + 요리한끗으로 밑간해 10분간 재워준다.\n2.양파, 양배추, 당근은(굵은채) 한마디 크기로 썰고, 잔파는 총총 썰어 준비한다.\n3.팬에 엑스트라버진 올리브유를 두르고 고기를 먼저 볶다가 반쯤 익으면 당근과 양파를 넣어 함께 볶아준다.\n4.양배추와 잔파를 넣고 물 2~3큰술과 순한빨간장 0.5작은술을 넣어 자작하게 볶아준다.\n5.재료가 모두 부드럽게 익고 수분이 살짝 남은 상태에서 불을 끄고 마무리한다.", "on_sale": "O", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "한돈불고기용", "amount": 80.0, "unit": "g"}, {"name": "양파", "amount": 30.0, "unit": "g"}, {"name": "양배추", "amount": 50.0, "unit": "g"}, {"name": "잔파", "amount": 20.0, "unit": "g"}, {"name": "당근", "amount": 30.0, "unit": "g"}]}, {"menu": "안매운참치무조림", "category": "냠냠메뉴", "price": 6000, "recipe": "1.무는 두마디길이 네모썰기해준다.\n2.참치는 미지근한 물에 씻어주고\n3.냄비에 무깔고 참치 올리고 채수를 부워주는데\n이때 채수는 무가 잠길듯 넣어주고 빨간장을 풀어준다.\n4.무가 반쯤 익을때 맛간장과 요리한끗을 넣어준다.\n5. 무가 다 익으면 불끄고 참기름 둘러준뒤 뚜껑닫고 뜸들여준다.\n5.잘게썬 잔파를 올려마무리", "on_sale": "X", "container": "사각반죽용기 300ml", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "참치", "amount": 70.0, "unit": "g"}, {"name": "무", "amount": 120.0, "unit": "g"}]}, {"menu": "안매운콩나물불고기", "category": "튼튼메뉴", "price": 6000, "recipe": "한돈 불고기용 고기는 생강비책 + 요리한끗으로 밑간해 10분간 재워준다.\n콩나물은 끓는 물에 살짝 데쳐 물기를 제거하고, 양파·양배추는 한마디 크기로 썰고 애느타리버섯은 찢어 준비한다.\n팬에 엑스트라버진 올리브유를 두르고 고기를 먼저 볶다가 반쯤 익으면 양파와 양배추를 넣어 볶는다.\n애느타리버섯과 콩나물을 넣고 물 2~3큰술, 순한빨간장 0.5작은술, 요리한끗을 넣어 자작하게 볶아준다.\n재료가 부드럽게 익고 수분이 살짝 남은 상태에서 불을 끄고 마무리한다.", "on_sale": "O", "container": "", "ingredients": [{"name": "한돈불고기", "amount": 60.0, "unit": "g"}, {"name": "양파", "amount": 30.0, "unit": "g"}, {"name": "애느타리버섯", "amount": 20.0, "unit": "g"}, {"name": "콩나물", "amount": 40.0, "unit": "g"}, {"name": "양배추", "amount": 30.0, "unit": "g"}]}, {"menu": "안매운토마토찹스테이크", "category": "일품메뉴", "price": 7000, "recipe": "한돈 안심은 한입 크기로 썰어 생강비책 + 요리한끗으로 밑간한 뒤, 끓는 물에 한 번 데쳐 준비한다.\n감자, 당근, 양파, 꼬마양배추는 한마디 크기로 썰고, 토마토는 껍질 제거 후 잘게 썬다.\n팬에 엑스트라버진 올리브유를 두르고 고기를 먼저 볶다가 채소(감자, 당근, 양파)를 넣어 함께 볶는다.\n토마토와 토마토퓨레를 넣고 물 50~70ml를 추가해 중약불에서 자작하게 끓인다.\n꼬마양배추를 넣고 부드럽게 익을 때까지 끓이며, 요리한끗으로 간을 맞춘다.\n재료가 부드럽게 익고 소스가 자연스럽게 걸쭉해지면 불을 끄고 마무리한다.", "on_sale": "O", "container": "", "ingredients": [{"name": "한돈안심", "amount": 70.0, "unit": "g"}, {"name": "감자", "amount": 30.0, "unit": "g"}, {"name": "꼬마양배추", "amount": 30.0, "unit": "g"}, {"name": "양파", "amount": 30.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "토마토", "amount": 30.0, "unit": "g"}, {"name": "토마토퓨레", "amount": 20.0, "unit": "g"}]}, {"menu": "안매운한돈빨간장찌개", "category": "국", "price": 0, "recipe": "", "on_sale": "O", "container": "", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 순한빨간장", "amount": 10.0, "unit": "g"}, {"name": "한돈앞다리살", "amount": 50.0, "unit": "g"}, {"name": "감자", "amount": 30.0, "unit": "g"}, {"name": "애호박", "amount": 20.0, "unit": "g"}, {"name": "양파", "amount": 20.0, "unit": "g"}, {"name": "새송이버섯", "amount": 30.0, "unit": "g"}]}, {"menu": "안매운한우육개장", "category": "국", "price": 0, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "한우다짐육", "amount": 40.0, "unit": "g"}, {"name": "무", "amount": 50.0, "unit": "g"}, {"name": "배추", "amount": 40.0, "unit": "g"}, {"name": "고사리", "amount": 10.0, "unit": "g"}, {"name": "숙주", "amount": 20.0, "unit": "g"}, {"name": "당근", "amount": 15.0, "unit": "g"}]}, {"menu": "알록달록만두강정", "category": "일품메뉴", "price": 7000, "recipe": "1.네니아 우리밀 만두를 기름에 튀겨낸다 (서로 붙지 않도록)\n2.모든야채는 새끼손톱크기로 깍둑썰기 해주어야 이쁘다\n3.양념은 순맛간장+원당+애사비+채수 넣고 야채먼저 익혀주고 불끈후 튀겨둔 만두를 넣어 버무려준다.", "on_sale": "X", "container": "타원용기 500ml", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "네니아우리밀만두", "amount": 120.0, "unit": "g"}, {"name": "양파", "amount": 20.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "파프리카", "amount": 20.0, "unit": "g"}]}, {"menu": "알록달록매생이계란찜", "category": "튼튼메뉴", "price": 6000, "recipe": "1.계란을 풀어주고 체에 한번 걸러 부드럽게 만들어준다.\n2.양배추 당근 팽이버섯을 다져서 넣고 매생이도 풀어준다.\n3.계란의 1/3의 채수를 넣고 요리한끗과 소금으로 간을한뒤 참기름을 한바퀴 둘러준다.\n4.실리콘 머핀틀에 넣고 익혀준다.", "on_sale": "O", "container": "", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "계란", "amount": 120.0, "unit": "g"}, {"name": "동결건조매생이(1인반조각)", "amount": 0.5, "unit": "g"}, {"name": "양배추", "amount": 20.0, "unit": "g"}, {"name": "팽이버섯", "amount": 20.0, "unit": "g"}, {"name": "당근", "amount": 10.0, "unit": "g"}]}, {"menu": "양고기쑥페스토스테이크", "category": "프리미엄메뉴", "price": 10000, "recipe": "1.양고기큐브는 생강비책+요리한끗으로 밑간을 해준다.\n2.끓는물에 쑥울데쳐준다. (데친물 버리지 않기)\n3.냄비에 쑥데친물 한국자+기버터한스푼 넣고 불켜서 양고넣고 익혀준다 (중약불로 뚜껑닫아서)\n4.야채는 올리브유 둘러 오븐에 구워준다.\n5.익힌쑥+올리브유+채수+소금+치즈+견과류넣고 페스토를 만들어준다.\n6.익은 양고기에 구운야채넣고 페스토 넣어 버무려준다.", "on_sale": "O", "container": "", "ingredients": [{"name": "양고기큐브", "amount": 110.0, "unit": "g"}, {"name": "알감자", "amount": 40.0, "unit": "g"}, {"name": "꼬마양배추", "amount": 30.0, "unit": "g"}, {"name": "꼬마당근", "amount": 30.0, "unit": "g"}, {"name": "깻잎", "amount": 5.0, "unit": "g"}]}, {"menu": "양고기자색무사골찜", "category": "프리미엄메뉴", "price": 10000, "recipe": "1.양고기(큐브)는 요리한끗 과 생강비책에 재어둔다\n2.자색무도 양고기와 비슷한 크기로 깍둑썰기해준다.\n3.양고기 먼저 올리브유 두르고 익혀준뒤 붉은기가 없어지면 무를 넣고 채수를 자작하게 깔아서 익혀주는데 이때 고기양념장을 넣어준다.\n4.채수가 거의 증발할때쯤 사골국을 넣고 양송이버섯 넣어 뚜껑닫고 익혀준다.", "on_sale": "X", "container": "사각반죽용기 400ml / 115파이 350ml 스크류 용기", "ingredients": [{"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "양고기", "amount": 120.0, "unit": "g"}, {"name": "자색무", "amount": 100.0, "unit": "g"}, {"name": "양송이버섯", "amount": 40.0, "unit": "g"}, {"name": "사골국", "amount": 70.0, "unit": "g"}]}, {"menu": "양고기참나물페스토스테이크", "category": "프리미엄메뉴", "price": 10000, "recipe": "1.양고기는 요리한끗 과 생강비책에 재어둔다\n2.감자,당근,양파는 두마디길이로 깍둑썰기 해준다.\n3.끓는물에 모든야채를 3분간 익혀서 건저낸다.\n4.팬에 올리브유 두르고 양고기를 먼저 익힌귀 야채는 넣어 볶아주고 야채가 반이상 익은시점에 페스토를 넣어 버무려준다.\n\n참나물페스토-데친참나물+견과류+치즈+채수넣고 믹서에 갈아낸다 (수분감이 적어야 점도가 잡히기에 조금씩넣으면서 갈아낸다)", "on_sale": "X", "container": "", "ingredients": [{"name": "양고기", "amount": 120.0, "unit": "g"}, {"name": "방울양배추", "amount": 50.0, "unit": "g"}, {"name": "감자", "amount": 50.0, "unit": "g"}, {"name": "당근", "amount": 30.0, "unit": "g"}, {"name": "양파", "amount": 40.0, "unit": "g"}, {"name": "참나물", "amount": 40.0, "unit": "g"}, {"name": "견과류", "amount": 25.0, "unit": "g"}, {"name": "치즈", "amount": 25.0, "unit": "g"}]}, {"menu": "양배추사과무침", "category": "냠냠메뉴", "price": 6000, "recipe": "양배추는 끓는 물에 살짝 데친 뒤 찬물에 헹궈 물기를 꼭 짜고 한마디 크기로 썰어준다.\n당근은 얇게 채썰어 데치거나 찜기에 살짝 익혀 준비한다.\n사과는 껍질을 제거하고 잘게 썰어 준비한다.\n볼에 양배추, 당근, 사과를 넣고 요리한끗 소량과 들기름 몇 방울을 넣어 가볍게 무쳐준다", "on_sale": "O", "container": "", "ingredients": [{"name": "양배추", "amount": 110.0, "unit": "g"}, {"name": "사과", "amount": 40.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}]}, {"menu": "에그감자사라다", "category": "냠냠메뉴", "price": 6000, "recipe": "감자는 한마디 크기로 썰어 찜기에 충분히 쪄준 뒤 부드럽게 으깨준다.\n계란은 완숙으로 삶아 잘게 으깨 준비한다.\n브로콜리는 송이만 떼어 찜기에 쪄서 잘게 다져준다.\n볼에 감자, 계란, 브로콜리를 넣고 코코넛크림과 그릭요거트를 함께 넣어 부드럽게 섞는다.\n농도를 보며 크림 또는 요거트를 소량 추가해가며 촉촉하게 마무리한다.", "on_sale": "O", "container": "", "ingredients": [{"name": "계란1인분 기준 1개", "amount": 0, "unit": "g"}, {"name": "감자", "amount": 60.0, "unit": "g"}, {"name": "브로콜리", "amount": 30.0, "unit": "g"}, {"name": "코코넛크림", "amount": 20.0, "unit": "g"}, {"name": "그릭요거트", "amount": 20.0, "unit": "g"}]}, {"menu": "연근흑임자요거트무침", "category": "냠냠메뉴", "price": 5000, "recipe": "연근은 얇게 썬 뒤 끓는 물에 삶거나 찜기에 쪄서 부드럽게 익힌다.\n익힌 연근은 한김 식혀 물기를 닦아낸 후 먹기 좋은 길이로 자른다.\n볼에 연근, 그리키 요거트, 흑임자 가루를 넣고 조심스럽게 버무려준다.\n과하게 묽지 않도록 요거트 양을 조절하고, 접시에 담아 깔끔하게 정리한다.", "on_sale": "X", "container": "", "ingredients": [{"name": "연근", "amount": 120.0, "unit": "g"}, {"name": "요거트", "amount": 40.0, "unit": "g"}, {"name": "흑임자", "amount": 3.0, "unit": "g"}]}, {"menu": "연어참나물영양밥", "category": "영양밥", "price": 6000, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "연어", "amount": 40.0, "unit": "g"}, {"name": "참나물", "amount": 20.0, "unit": "g"}, {"name": "무", "amount": 40.0, "unit": "g"}, {"name": "새송이버섯", "amount": 40.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}]}, {"menu": "오리고기황금버섯덮밥소스", "category": "덮밥소스", "price": 0, "recipe": "", "on_sale": "O", "container": "", "ingredients": [{"name": "오리목살", "amount": 50.0, "unit": "g"}, {"name": "양배추", "amount": 30.0, "unit": "g"}, {"name": "황금팽이", "amount": 30.0, "unit": "g"}, {"name": "무", "amount": 40.0, "unit": "g"}]}, {"menu": "오리뿌리채소덮밥소스", "category": "덮밥소스", "price": 6000, "recipe": "", "on_sale": "O", "container": "", "ingredients": [{"name": "오리고기", "amount": 50.0, "unit": "g"}, {"name": "연근", "amount": 30.0, "unit": "g"}, {"name": "무", "amount": 40.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "우엉", "amount": 10.0, "unit": "g"}]}, {"menu": "오징어감자매생이국", "category": "국", "price": 6000, "recipe": "오징어는 손질 후 끓는 물에 살짝 데쳐 한입 크기로 썰어준다.\n감자는 한마디 크기로 썰고, 두부는 손톱 크기로 썰어 준비한다. 매생이는 흐르는 물에 가볍게 헹궈 준비한다.\n냄비에 채수 250ml를 넣고 감자를 먼저 넣어 충분히 끓여 단맛을 끌어낸다.\n오징어와 두부를 넣고 한소끔 끓인 뒤, 요리한끗 소량으로 간을 맞춘다.\n마지막에 매생이를 넣고 10~20초 정도만 끓인 후 바로 불을 끄고 마무리한다", "on_sale": "O", "container": "", "ingredients": [{"name": "오징어", "amount": 40.0, "unit": "g"}, {"name": "감자", "amount": 100.0, "unit": "g"}, {"name": "매생이", "amount": 15.0, "unit": "g"}, {"name": "두부", "amount": 20.0, "unit": "g"}]}, {"menu": "우리콩유부된장국", "category": "국", "price": 0, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "유부", "amount": 30.0, "unit": "g"}, {"name": "건미역", "amount": 2.0, "unit": "g"}, {"name": "팽이버섯", "amount": 20.0, "unit": "g"}]}, {"menu": "월동무된장찜닭", "category": "튼튼메뉴", "price": 6000, "recipe": "닭등살과 안심은 끓는 물에 생강비책을 풀고 1차 데친 후 건져서 요리한끗으로 밑간한다.\n무는 부드럽게 익히기 위해 끓는 물에 5분 정도 익히고, 표고·당근·양파도 먹기 좋은 크기로 손질한다.\n팬 또는 냄비에 채수,고기양념장,원당 요리한끗을 넣고 끓인 뒤 준비한 재료를 모두 넣고 약불로 자작하게 조려준다.\n무가 충분히 부드럽고 국물이 반쯤 졸아들면 불을 끄고 따뜻하게 완성한다.", "on_sale": "X", "container": "", "ingredients": [{"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 고기양념장", "amount": 0, "unit": "g"}, {"name": "무", "amount": 50.0, "unit": "g"}, {"name": "닭등살+안심", "amount": 100.0, "unit": "g"}, {"name": "표고", "amount": 30.0, "unit": "g"}, {"name": "당근", "amount": 30.0, "unit": "g"}, {"name": "양파", "amount": 30.0, "unit": "g"}]}, {"menu": "이베리코기버터참나물볶음", "category": "프리미엄메뉴", "price": 10000, "recipe": "1. 이베리코는 한입 크기로 썰어 생강비책+누룩소금으로 재어둔다.\n2.브로콜리,파프리카,애느타리버섯,양파 모두 두마디길이로 길게썰어준다.\n3. 팬에 기버터를 두르고 양파와 고기를 먼저 볶아준다.\n4.고기가 반이상 익으면 모든야채를 넣어서 볶아주고 이때 추가로 맛간장과 조청이 들어간다\n5.야채가 익으면 불을크로 참나물을 넣어 뜸들여준다.\n★데코 -생파슬리 혹은 연근칩", "on_sale": "X", "container": "", "ingredients": [{"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "이베리코", "amount": 110.0, "unit": "g"}, {"name": "파프리카", "amount": 20.0, "unit": "g"}, {"name": "애느타리버섯", "amount": 40.0, "unit": "g"}, {"name": "브로콜리", "amount": 40.0, "unit": "g"}, {"name": "참나물", "amount": 10.0, "unit": "g"}, {"name": "양파", "amount": 40.0, "unit": "g"}]}, {"menu": "이베리코김치치즈크로켓", "category": "프리미엄메뉴", "price": 10000, "recipe": "1.이베리코다짐육+목초육을 누룩소금,생강비책,한끗으로 밑간을해준다.\n2.순한김치는 기버터에 볶아서 수분을 날려준다.\n3.꼬마새송이는 끓는물에 데쳐서 챠퍼에 다진후 물기를 짜준다.\n4.모든재료를 섞어주고 쌀가루+빵가루를 넣어 점도를잡는다 (밀알러지 체크)\n5.겉면에 빵가루를 입혀서 오븐에 구워준다.", "on_sale": "O", "container": "", "ingredients": [{"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "이베리코다짐육", "amount": 50.0, "unit": "g"}, {"name": "목초육다짐육", "amount": 50.0, "unit": "g"}, {"name": "순한배추김치", "amount": 40.0, "unit": "g"}, {"name": "꼬마새송이", "amount": 60.0, "unit": "g"}]}, {"menu": "이베리코목살커리구이", "category": "프리미엄메뉴", "price": 10000, "recipe": "이베리코목살을 생강비책 + 요리한끗으로 밑간해 10분간 재워둔다.\n필요 시 한입 크기로 잘라 사용해도 좋다.\n브로콜리, 그린빈은 살짝 데쳐 식감 살린다.\n꼬마새송이, 양파, 파프리카는 각각 썰어 준비한다.\n팬에 무염버터 또는 오일 소량 두르고\n목살을 앞뒤로 노릇하게 구워준다.\n고기가 익으면 채소들을 함께 넣고\n커리파우더 + 요리한끗을 넣어 한 번 더 볶아준다.", "on_sale": "O", "container": "", "ingredients": [{"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "이베리코목살", "amount": 130.0, "unit": "g"}, {"name": "브로콜리", "amount": 30.0, "unit": "g"}, {"name": "양파", "amount": 40.0, "unit": "g"}, {"name": "그린빈", "amount": 30.0, "unit": "g"}, {"name": "꼬마새송이", "amount": 30.0, "unit": "g"}, {"name": "파프리카", "amount": 20.0, "unit": "g"}]}, {"menu": "제주당근크림닭찜", "category": "일품메뉴", "price": 7000, "recipe": "1. 닭등살은  생강비책 요리한끗으로 밑간해 준비한다.\n2.  감자 새송이버섯은 두마디 크기 깍둑썰기한다\n3. 찐당근과 크림+소금+전분가루를 넣어 갈아서 소스를 만들어둔다.\n4. 밑간한 닭고기를 채수 두국자 넣어 감자와 새송이버섯넣고 익혀주고 반이상익었을떄 당근크림소스를 넣어 졸여준다.", "on_sale": "X", "container": "", "ingredients": [{"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "닭등살", "amount": 80.0, "unit": "g"}, {"name": "당근", "amount": 40.0, "unit": "g"}, {"name": "감자", "amount": 30.0, "unit": "g"}, {"name": "크림", "amount": 60.0, "unit": "g"}, {"name": "새송이버섯", "amount": 40.0, "unit": "g"}]}, {"menu": "참치곤드레버섯영양밥", "category": "영양밥", "price": 6000, "recipe": "", "on_sale": "O", "container": "", "ingredients": [{"name": "참치", "amount": 40.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}, {"name": "애느타리", "amount": 30.0, "unit": "g"}, {"name": "무", "amount": 40.0, "unit": "g"}, {"name": "곤드레", "amount": 15.0, "unit": "g"}, {"name": "당근", "amount": 10.0, "unit": "g"}]}, {"menu": "참치삼색순두부찜", "category": "튼튼메뉴", "price": 6000, "recipe": "브로콜리와 파프리카(홍/노랑), 당근, 새송이버섯은 유아식 기준으로 한마디 크기로 잘라 찜기에 쪄준다.\n참치는 체에 밭쳐 기름을 제거한 뒤 잘게 다진다.\n순두부는 으깨지지 않게 주의하며 큐브 모양으로 썰거나 큰 숟가락으로 한입 크기로 덜어 사용한다.\n찜기에 순두부를 바닥에 깔고, 그 위에 찐 채소들과 참치를 고루 올린다.\n요리한끗 + 순맛간장 으로 간을해준다", "on_sale": "X", "container": "", "ingredients": [{"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "참치", "amount": 60.0, "unit": "g"}, {"name": "브로콜리", "amount": 30.0, "unit": "g"}, {"name": "홍파프리카", "amount": 15.0, "unit": "g"}, {"name": "노랑파프리카", "amount": 15.0, "unit": "g"}, {"name": "당근", "amount": 30.0, "unit": "g"}, {"name": "새송이버섯", "amount": 30.0, "unit": "g"}, {"name": "순두부", "amount": 50.0, "unit": "g"}]}, {"menu": "참치순한배추김치전", "category": "튼튼메뉴", "price": 6000, "recipe": "1.참치는 기름기를 빼주기위해 미지근한 물에 헹궈 체에 받쳐둔다.\n2.팽이버섯과 양파,잔파 모두 다져주고 순한배추김치와 섞는다. \n3.맛간장과 요리한끗넣고 쌀부침가루와 채수로 농도 잡아준다. \n섞으면서 마지막에 들기름을 한스푼 둘러주면 풍미도 올라가고, 감칠맛도 내준다.", "on_sale": "X", "container": "", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "참치", "amount": 50.0, "unit": "g"}, {"name": "팽이버섯", "amount": 30.0, "unit": "g"}, {"name": "순한배추김치", "amount": 50.0, "unit": "g"}, {"name": "잔파", "amount": 5.0, "unit": "g"}, {"name": "양파", "amount": 15.0, "unit": "g"}, {"name": "쌀부침가루", "amount": 25.0, "unit": "g"}]}, {"menu": "참치자색고구마영양밥", "category": "영양밥", "price": 0, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "참치", "amount": 50.0, "unit": "g"}, {"name": "자색고구마", "amount": 50.0, "unit": "g"}, {"name": "감자", "amount": 30.0, "unit": "g"}, {"name": "렌틸콩", "amount": 5.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}]}, {"menu": "청경채죽순볶음", "category": "냠냠메뉴", "price": 5000, "recipe": "1.(죽순은 가급적 데친 죽순사용) 죽순은 한마디반 길이로 편썰기 해준다.\n2.청경채는 꼭지를 중심으로 4등분 해준다.\n3.양배추는 한마디 길이 네모썰기해주고,당근은 굵은채썰기 해준다.\n4.팬에 올리브유 두르고 모든야채를 볶아준다 간은 순맛간장,요리한끗으로 해준다.", "on_sale": "X", "container": "", "ingredients": [{"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "순맛간장", "amount": 0, "unit": "g"}, {"name": "생강비책", "amount": 0, "unit": "g"}, {"name": "청경채", "amount": 60.0, "unit": "g"}, {"name": "죽순", "amount": 50.0, "unit": "g"}, {"name": "양배추", "amount": 40.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}]}, {"menu": "청포묵김무침", "category": "냠냠메뉴", "price": 5000, "recipe": "청포묵은 끓는 물에 살짝 데쳐 특유의 냄새를 제거한 뒤 한마디 길이로 썰어준다.\n숙주는 끓는 물에 30초간 데친 후 찬물에 헹궈 물기를 꼭 짜고, 당근은 얇게 채썰어 데치거나 살짝 쪄준다.\n김은 잘게 부숴 준비한다.\n볼에 청포묵, 숙주, 당근, 김을 넣고 순맛간장 0.3작은술, 들기름 몇 방울, 요리한끗 소량을 넣어 가볍게 무쳐준다.", "on_sale": "O", "container": "", "ingredients": [{"name": "청포묵", "amount": 120.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "숙주", "amount": 30.0, "unit": "g"}, {"name": "김", "amount": 8.0, "unit": "g"}]}, {"menu": "쿠스쿠스샐러드", "category": "냠냠메뉴", "price": 5000, "recipe": "쿠스쿠스는 따뜻한 물을 부어 5분 정도 불린 뒤 포슬하게 풀어 준비한다.\n적채는 얇게 채썰어 끓는 물에 살짝 데친 뒤 찬물에 헹궈 물기를 제거한다.\n오이는 씨를 제거하고 잘게 썰고, 파프리카도 한입 크기로 작게 썰어 준비한다.\n모든 재료를 볼에 담고 엑스트라버진 올리브유 몇 방울과 요리한끗 소량을 넣어 가볍게 버무린", "on_sale": "O", "container": "", "ingredients": [{"name": "쿠스쿠스", "amount": 30.0, "unit": "g"}, {"name": "적채", "amount": 30.0, "unit": "g"}, {"name": "오이", "amount": 20.0, "unit": "g"}, {"name": "파프리카", "amount": 20.0, "unit": "g"}]}, {"menu": "한돈4색커리영양밥", "category": "영양밥", "price": 0, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "한돈다짐육", "amount": 50.0, "unit": "g"}, {"name": "완두콩", "amount": 30.0, "unit": "g"}, {"name": "홍파프리카", "amount": 30.0, "unit": "g"}, {"name": "새송이버섯", "amount": 30.0, "unit": "g"}, {"name": "강황가루", "amount": 3.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}]}, {"menu": "한돈가지짜장볶음", "category": "튼튼메뉴", "price": 6000, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "한돈다짐육", "amount": 60.0, "unit": "g"}, {"name": "감자", "amount": 30.0, "unit": "g"}, {"name": "양파", "amount": 20.0, "unit": "g"}, {"name": "가지", "amount": 40.0, "unit": "g"}, {"name": "양배추", "amount": 30.0, "unit": "g"}, {"name": "옥수수콘", "amount": 20.0, "unit": "g"}, {"name": "짜장분말", "amount": 15.0, "unit": "g"}]}, {"menu": "한돈고사리녹두빈대떡", "category": "일품메뉴", "price": 7000, "recipe": "1.녹두는 전날 불려두거나 미리 삶아둔다.\n2.삶은 녹두는 믹서에 곱게 갈아준다.\n3.고사리와 숙주는 두마디 길이로썰어주고, 당근은 얅은 채썰기해준다.\n4.다짐육은 한끗+생강비책으로 밑간해둔다.\n5.감자는 물넣고 챠퍼에 갈아서 채에걸러둔다.\n6.모든재료를 다 섞어서 쌀부침가루 넣어 점도잡아 구워준다.", "on_sale": "X", "container": "", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "한돈다짐육", "amount": 50.0, "unit": "g"}, {"name": "감자", "amount": 30.0, "unit": "g"}, {"name": "두부", "amount": 40.0, "unit": "g"}, {"name": "녹두", "amount": 30.0, "unit": "g"}, {"name": "고사리", "amount": 20.0, "unit": "g"}, {"name": "숙주", "amount": 30.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}]}, {"menu": "한돈곤드레수수영양밥", "category": "영양밥", "price": 6000, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "한돈다짐육", "amount": 40.0, "unit": "g"}, {"name": "새송이버섯", "amount": 30.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "건곤드레", "amount": 5.0, "unit": "g"}, {"name": "수수", "amount": 5.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}]}, {"menu": "한돈냉이볼까츠", "category": "일품메뉴", "price": 7000, "recipe": "한돈 다짐육은 생강비책 + 요리한끗으로 밑간해두고, 냉이는 데친 후 물기를 꼭 짜고 잘게 썰어 준비한다.\n데친 꼬마새송이는 찬물에 헹군 뒤 챠퍼에 곱게 다지고 물기를 꼭 짜서 준비한다.\n밑간한 고기, 냉이, 버섯을 고루 섞어 반죽한 뒤, 유아 한입 크기의 동글납작한 볼 형태로 빚어준다.\n(점도는 전분가루와 쌀가루로 잡아준다)\n동그랗게 볼을 만들고 튀김반죽-빵가루 순으로 입혀준뒤 튀기거나 오븐에 구워준다.", "on_sale": "X", "container": "", "ingredients": [{"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "한돈다짐육", "amount": 80.0, "unit": "g"}, {"name": "냉이", "amount": 30.0, "unit": "g"}, {"name": "꼬마새송이", "amount": 50.0, "unit": "g"}]}, {"menu": "한돈냉이춘권", "category": "일품메뉴", "price": 0, "recipe": "한돈 다짐육은 생강비책 + 요리한끗으로 밑간해 준비한다.\n배추, 숙주, 팽이버섯은 끓는 물에 살짝 데친 후 물기를 꼭 짜고 잘게 다진다.\n냉이와 부추도 데쳐 물기를 제거한 뒤 잘게 썰어준다.\n준비한 재료를 모두 섞어 속재료를 만든 뒤 춘권피에 한입 크기로 넣어 돌돌 말아준다.\n팬에 엑스트라버진 올리브유 또는 기버터를 두르고 약불에서 굴려가며 노릇하게 구워 완성한다.", "on_sale": "O", "container": "", "ingredients": [{"name": "한돈다짐육", "amount": 80.0, "unit": "g"}, {"name": "배추", "amount": 30.0, "unit": "g"}, {"name": "숙주", "amount": 20.0, "unit": "g"}, {"name": "팽이버섯", "amount": 10.0, "unit": "g"}, {"name": "부추", "amount": 5.0, "unit": "g"}, {"name": "냉이", "amount": 10.0, "unit": "g"}, {"name": "춘권피 1장-1개", "amount": 0, "unit": "g"}]}, {"menu": "한돈느타리맛간장볶음", "category": "튼튼메뉴", "price": 6000, "recipe": "한돈 다짐육은 생강비책 + 요리한끗으로 밑간해 준비한다.\n느타리버섯은 결대로 찢고, 당근·양파·파프리카는 한마디 크기 또는 채썰기로 준비한다.\n팬에 엑스트라버진 올리브유를 두르고 고기를 먼저 볶다가 익으면 당근과 양파를 넣어 함께 볶는다.\n느타리버섯과 파프리카를 넣고 물 2큰술, 순맛간장 0.5작은술, 요리한끗 소량을 넣어 자작하게 볶아준다.", "on_sale": "O", "container": "", "ingredients": [{"name": "한돈다짐육", "amount": 50.0, "unit": "g"}, {"name": "느타리버섯", "amount": 60.0, "unit": "g"}, {"name": "당근", "amount": 30.0, "unit": "g"}, {"name": "양파", "amount": 30.0, "unit": "g"}, {"name": "파프리카", "amount": 20.0, "unit": "g"}]}, {"menu": "한돈들깨시래기감자국", "category": "국", "price": 0, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "한돈뒷다리살", "amount": 50.0, "unit": "g"}, {"name": "무", "amount": 50.0, "unit": "g"}, {"name": "감자", "amount": 70.0, "unit": "g"}, {"name": "시래기", "amount": 20.0, "unit": "g"}, {"name": "들깨가루", "amount": 5.0, "unit": "g"}]}, {"menu": "한돈라구덮밥소스", "category": "덮밥소스", "price": 6000, "recipe": "", "on_sale": "O", "container": "", "ingredients": [{"name": "한돈다짐육", "amount": 40.0, "unit": "g"}, {"name": "새송이버섯", "amount": 20.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "양파", "amount": 20.0, "unit": "g"}, {"name": "토마토", "amount": 20.0, "unit": "g"}, {"name": "토마토퓨레", "amount": 60.0, "unit": "g"}]}, {"menu": "한돈마파두부덮밥소스", "category": "덮밥소스", "price": 0, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "한돈다짐육", "amount": 40.0, "unit": "g"}, {"name": "두부", "amount": 50.0, "unit": "g"}, {"name": "감자", "amount": 30.0, "unit": "g"}, {"name": "브로콜리", "amount": 20.0, "unit": "g"}]}, {"menu": "한돈미나리샐러드", "category": "냠냠메뉴", "price": 5000, "recipe": "1. 삼겹살은 끓는 물에 생강비책을 살짝 풀어 데친 뒤, 기름기를 제거하고 먹기 좋은 크기로 썰어준다.\n2. 미나리, 적채, 로메인, 당근은 각각 데치거나 쪄서 부드럽게 준비하고, 옥수수도 찐 후 식혀둔다.\n3. 모든 재료를 한데 섞은 후 아이가 먹기 좋은 온도로 맞추고, 기호에 따라 바비야기 요거트참깨소스나 유아용 들깨드레싱을 곁들여준다.\n4. 완성된 샐러드를 한 접시에 부드럽게 담아 제공한다.", "on_sale": "X", "container": "", "ingredients": [{"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "한돈얇은삼겹살", "amount": 40.0, "unit": "g"}, {"name": "미나리", "amount": 30.0, "unit": "g"}, {"name": "적채", "amount": 30.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "옥수수", "amount": 20.0, "unit": "g"}, {"name": "로메인", "amount": 25.0, "unit": "g"}]}, {"menu": "한돈백김치순두부국", "category": "국", "price": 0, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "한돈다짐육", "amount": 50.0, "unit": "g"}, {"name": "백김치", "amount": 100.0, "unit": "g"}, {"name": "순두부", "amount": 40.0, "unit": "g"}, {"name": "팽이버섯", "amount": 10.0, "unit": "g"}]}, {"menu": "한돈불고기덮밥소스", "category": "덮밥소스", "price": 0, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "한돈불고기거리", "amount": 40.0, "unit": "g"}, {"name": "애느타리버섯", "amount": 30.0, "unit": "g"}, {"name": "부추", "amount": 5.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "양파", "amount": 20.0, "unit": "g"}]}, {"menu": "한돈알록달록톳영양밥", "category": "영양밥", "price": 6000, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "한돈다짐육", "amount": 40.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "애호박", "amount": 30.0, "unit": "g"}, {"name": "애느타리버섯", "amount": 30.0, "unit": "g"}, {"name": "건톳", "amount": 3.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}]}, {"menu": "한돈영양갈비찜", "category": "일품메뉴", "price": 7000, "recipe": "1.한돈 안심+뒷다리살을 생강비책 푼 물에 15분 익혀주고 깨끗하게 씻어준다.\n2.감자,무,당근, 표고 모두 2마디길이 깍둑썰기 해준다.\n3.냄비에 씻은 한돈 안심+뒷다리살을 넣고 채수반쯤 잠길만큼 채수1: 고기양념장 1 넣어서 익혀준다.\n4.고기가 부드러워질때쯤 모든 야채를 넣고 익힌다", "on_sale": "X", "container": "", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 순한고기양념장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "한돈(안심 +뒷다리살)", "amount": 80.0, "unit": "g"}, {"name": "감자", "amount": 40.0, "unit": "g"}, {"name": "무", "amount": 40.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "표고", "amount": 20.0, "unit": "g"}, {"name": "은행", "amount": 10.0, "unit": "g"}]}, {"menu": "한돈콩나물잡채", "category": "튼튼메뉴", "price": 6000, "recipe": "한돈 잡채용 고기는 생강비책 + 요리한끗으로 밑간해 준비한다.\n잡채면은 따뜻한 물에 불려 부드럽게 준비하고, 콩나물은 살짝 데쳐 물기를 제거한다.\n당근과 애느타리버섯은 한마디 크기로 썰고, 부추는 2~3cm 길이로 썬다.\n팬에 엑스트라버진 올리브유를 두르고 고기를 먼저 볶다가 익으면 당근과 버섯을 넣어 함께 볶는다.\n불린 잡채면과 콩나물, 부추를 넣고 물 2~3큰술과 요리한끗 소량, 순맛간장 0.5작은술을 넣어 볶아준다.\n재료가 골고루 섞이고 면이 부드럽게 익으면 불을 끄고 마무리한다.", "on_sale": "O", "container": "", "ingredients": [{"name": "한돈잡채용", "amount": 40.0, "unit": "g"}, {"name": "잡채", "amount": 50.0, "unit": "g"}, {"name": "콩나물", "amount": 30.0, "unit": "g"}, {"name": "애느타리버섯", "amount": 20.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "부추", "amount": 10.0, "unit": "g"}]}, {"menu": "한돈토마토순두부덮밥소스", "category": "덮밥소스", "price": 0, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "한돈다짐육", "amount": 50.0, "unit": "g"}, {"name": "방울토마토", "amount": 40.0, "unit": "g"}, {"name": "토마토퓨레", "amount": 30.0, "unit": "g"}, {"name": "완두콩", "amount": 10.0, "unit": "g"}, {"name": "순두부", "amount": 40.0, "unit": "g"}]}, {"menu": "한우가지된장영양밥", "category": "영양밥", "price": 6000, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "한우다짐육", "amount": 40.0, "unit": "g"}, {"name": "가지", "amount": 40.0, "unit": "g"}, {"name": "양배추", "amount": 30.0, "unit": "g"}, {"name": "팽이버섯", "amount": 20.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}, {"name": "바바야기 순맛된장", "amount": 5.0, "unit": "g"}]}, {"menu": "한우감자콩나물국", "category": "국", "price": 0, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "한우다짐육", "amount": 40.0, "unit": "g"}, {"name": "감자", "amount": 70.0, "unit": "g"}, {"name": "콩나물", "amount": 20.0, "unit": "g"}]}, {"menu": "한우깻잎페스토크림파스타", "category": "튼튼메뉴", "price": 6000, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "한우다짐육", "amount": 40.0, "unit": "g"}, {"name": "깻잎", "amount": 5.0, "unit": "장"}, {"name": "파스타", "amount": 25.0, "unit": "g"}, {"name": "견과류", "amount": 15.0, "unit": "g"}, {"name": "올리브유", "amount": 10.0, "unit": "g"}, {"name": "치츠", "amount": 20.0, "unit": "g"}]}, {"menu": "한우냉이된장국", "category": "국", "price": 0, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "한우다짐육", "amount": 50.0, "unit": "g"}, {"name": "무", "amount": 40.0, "unit": "g"}, {"name": "감자", "amount": 40.0, "unit": "g"}, {"name": "애호박", "amount": 30.0, "unit": "g"}, {"name": "표고", "amount": 30.0, "unit": "g"}, {"name": "냉이", "amount": 30.0, "unit": "g"}]}, {"menu": "한우냉이불고기", "category": "일품메뉴", "price": 7000, "recipe": "한우불고기는 생강비책과 요리한끗으로 밑간하여 10분 정도 재워둔다.\n애느타리버섯, 양파, 당근은 한입 크기로 썰고 냉이는 데쳐 물기를 짠 후 잘게 썰어 준비한다.\n팬에 기름 없이 한우불고기를 볶다가 고기가 익어갈 즈음 채소와 냉이를 넣고 함께 볶아준다.\n모든 재료가 익고 수분이 적당히 남아있는 상태로 마무리하면 완성이다.", "on_sale": "X", "container": "", "ingredients": [{"name": "바비야기 생강비책", "amount": 0, "unit": "g"}, {"name": "바비야기 요리한끗", "amount": 0, "unit": "g"}, {"name": "한우불고기", "amount": 80.0, "unit": "g"}, {"name": "애느타리", "amount": 30.0, "unit": "g"}, {"name": "냉이", "amount": 40.0, "unit": "g"}, {"name": "당근", "amount": 20.0, "unit": "g"}, {"name": "양파", "amount": 30.0, "unit": "g"}]}, {"menu": "한우냉이빈대떡", "category": "튼튼메뉴", "price": 6000, "recipe": "감자는 챠퍼에 갈아 체에 밭쳐 전분을 가라앉힌 뒤 윗물을 따라내고, 남은 전분과 함께 감자즙을 반죽 베이스로 사용한다.\n냉이는 끓는 물에 살짝 데친 뒤 찬물에 헹궈 물기를 꼭 짜고 잘게 썬다. 숙주도 데친 후 같은 방식으로 준비한다.\n감자즙 반죽에 냉이, 숙주, 밑간한 한우 다짐육을 넣고 고루 섞는다.\n팬에 기름 소량을 두르고 반죽을 한입 크기로 얇게 펼쳐 앞뒤로 노릇하게 구워 완성한다.", "on_sale": "X", "container": "", "ingredients": [{"name": "한우다짐육", "amount": 50.0, "unit": "g"}, {"name": "감자", "amount": 100.0, "unit": "g"}, {"name": "냉이", "amount": 30.0, "unit": "g"}, {"name": "숙주", "amount": 40.0, "unit": "g"}]}, {"menu": "한우무나물", "category": "냠냠메뉴", "price": 5000, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "바비야기 순맛간장", "amount": 0, "unit": "g"}, {"name": "한우", "amount": 15.0, "unit": "g"}, {"name": "무", "amount": 130.0, "unit": "g"}]}, {"menu": "한우봄동된장덮밥소스", "category": "덮밥소스", "price": 0, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "한우불고기거리", "amount": 50.0, "unit": "g"}, {"name": "봄동", "amount": 30.0, "unit": "g"}, {"name": "무", "amount": 40.0, "unit": "g"}, {"name": "감자", "amount": 30.0, "unit": "g"}]}, {"menu": "한우세발나물두부덮밥소스", "category": "덮밥소스", "price": 0, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "한우다짐육", "amount": 50.0, "unit": "g"}, {"name": "세발나물", "amount": 30.0, "unit": "g"}, {"name": "당근", "amount": 10.0, "unit": "g"}, {"name": "두부", "amount": 30.0, "unit": "g"}]}, {"menu": "한우자색무들깨덮밥소스", "category": "덮밥소스", "price": 0, "recipe": "", "on_sale": "X", "container": "타원용기 500ml", "ingredients": [{"name": "한우다짐육", "amount": 40.0, "unit": "g"}, {"name": "자색무", "amount": 60.0, "unit": "g"}, {"name": "팽이버섯", "amount": 20.0, "unit": "g"}, {"name": "들깨가루", "amount": 3.0, "unit": "g"}]}, {"menu": "한우자색무통들깨영양밥", "category": "영양밥", "price": 6000, "recipe": "", "on_sale": "X", "container": "타원용기 500ml", "ingredients": [{"name": "한우다짐육", "amount": 40.0, "unit": "g"}, {"name": "자색무", "amount": 40.0, "unit": "g"}, {"name": "표고버섯", "amount": 30.0, "unit": "g"}, {"name": "통들깨", "amount": 3.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}]}, {"menu": "한우탕국", "category": "국", "price": 0, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "한우다짐육", "amount": 40.0, "unit": "g"}, {"name": "바지락살", "amount": 20.0, "unit": "g"}, {"name": "무", "amount": 50.0, "unit": "g"}, {"name": "새송이", "amount": 30.0, "unit": "g"}, {"name": "어묵", "amount": 20.0, "unit": "g"}, {"name": "두부", "amount": 30.0, "unit": "g"}]}, {"menu": "한우토마토옥수수영양밥", "category": "영양밥", "price": 6000, "recipe": "", "on_sale": "X", "container": "", "ingredients": [{"name": "한우다짐육", "amount": 40.0, "unit": "g"}, {"name": "토마토", "amount": 40.0, "unit": "g"}, {"name": "옥수수", "amount": 30.0, "unit": "g"}, {"name": "양배추", "amount": 20.0, "unit": "g"}, {"name": "새송이버섯", "amount": 20.0, "unit": "g"}, {"name": "백미", "amount": 70.0, "unit": "g"}]}, {"menu": "해물마크림그라탕", "category": "일품메뉴", "price": 7000, "recipe": "오징어와 새우는 손질 후 끓는 물에 살짝 데쳐 한입 크기로 썰어준다.\n마는 껍질을 제거하고 곱게 갈거나 잘게 다져 준비한다.\n연근과 브로콜리는 작게 썰어 찜기에 부드럽게 쪄준다.\n팬에 엑스트라버진 올리브유를 살짝 두르고 해물과 채소를 가볍게 볶아준다.\n쿠킹크림과 마를 넣고 섞어가며 끓여 크림소스를 만든다.\n그라탕 용기에 담아 오븐 또는 에어프라이어 180도에서 5~7분 정도 구워 완성한다", "on_sale": "O", "container": "", "ingredients": [{"name": "오징어", "amount": 30.0, "unit": "g"}, {"name": "새우", "amount": 30.0, "unit": "g"}, {"name": "마", "amount": 40.0, "unit": "g"}, {"name": "쿠킹크림", "amount": 60.0, "unit": "g"}, {"name": "연근", "amount": 20.0, "unit": "g"}, {"name": "브로콜리", "amount": 20.0, "unit": "g"}, {"name": "치즈", "amount": 5.0, "unit": "g"}]}, {"menu": "황금버섯오리탕", "category": "국", "price": 6000, "recipe": "오리목심은 한입 크기로 썰어 생강비책을 넣은 끓는 물에 데친 뒤, 요리한끗으로 밑간해준다.\n무와 감자는 한마디 크기로 썰고, 표고버섯도 같은 크기로 썰어 준비한다. 부추는 2~3cm 길이로 썬다.\n냄비에 채수 250ml를 넣고 무와 감자를 먼저 넣어 충분히 끓여 단맛을 끌어낸다.\n오리목심과 표고버섯을 넣고 중약불에서 끓이며, 요리한끗으로 간을 맞춘다.\n마지막에 부추를 넣고 한소끔 끓여 마무리한다.", "on_sale": "O", "container": "", "ingredients": [{"name": "오리목심", "amount": 50.0, "unit": "g"}, {"name": "무", "amount": 30.0, "unit": "g"}, {"name": "감자", "amount": 40.0, "unit": "g"}, {"name": "표고버섯", "amount": 20.0, "unit": "g"}, {"name": "부추", "amount": 10.0, "unit": "g"}]}];
+
+// ===================== STATE =====================
+const ORD_STORAGE_KEY = 'babiyagi_orders_v2';
+const ORD_HISTORY_KEY = 'babiyagi_import_history';
+let selectedMenus = new Map(); // name -> qty
+let processedData = null;
+let currentCat = '전체';
+let searchQ = '';
+
+let allOrders = [];        // 런타임 주문 목록
+let filteredOrders = [];   // 현재 필터 결과
+let ordTypeFilter = 'all'; // 탭 필터
+let importHistory = [];    // [{id, filename, date, count}]
+let stockItems = [];
+let stockCatFilter = '전체';
+
+// ===================== TABS =====================
+function showTab(id) {
+  document.querySelectorAll('.sec').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  const idx = {recipe:0, ingredients:1, process:2, orders:3, stock:4}[id];
+  document.querySelectorAll('.nav-tab')[idx].classList.add('active');
+}
+
+// ===================== 메뉴 선택 =====================
+const CATS = ['전체','판매중','튼튼메뉴','일품메뉴','국','프리미엄메뉴','덮밥소스','냠냠메뉴','영양밥'];
+
+// ===================== INIT =====================
+(function init() {
+  const d = new Date();
+  const days = ['일','월','화','수','목','금','토'];
+  document.getElementById('hdate').textContent =
+    d.getFullYear() + '.' + String(d.getMonth()+1).padStart(2,'0') + '.' +
+    String(d.getDate()).padStart(2,'0') + ' (' + days[d.getDay()] + ')';
+  buildCatFilters();
+  renderMenuGrid();
+  initStock();
+  loadOrdersFromStorage();
+})();
+
+function buildCatFilters() {
+  document.getElementById('catFilters').innerHTML = CATS.map((c, i) =>
+    `<button class="fbtn ${i===0?'on':''}" onclick="setCat('${c}',this)">${c}</button>`
+  ).join('');
+}
+
+function setCat(cat, btn) {
+  currentCat = cat;
+  document.querySelectorAll('#catFilters .fbtn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderMenuGrid();
+}
+
+function filterMenus() {
+  searchQ = document.getElementById('menuSearch').value.trim().toLowerCase();
+  renderMenuGrid();
+}
+
+function getFilteredMenus() {
+  return ALL_MENUS.filter(m => {
+    const catOk = currentCat === '전체' ? true
+                : currentCat === '판매중' ? m.on_sale === 'O'
+                : m.category === currentCat;
+    const qOk = !searchQ
+      || m.menu.toLowerCase().includes(searchQ)
+      || m.ingredients.some(i => i.name.toLowerCase().includes(searchQ));
+    return catOk && qOk;
+  });
+}
+
+function renderMenuGrid() {
+  const menus = getFilteredMenus();
+  const grid = document.getElementById('menuGrid');
+  if (menus.length === 0) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🔍</div><div>검색 결과가 없습니다</div></div>';
+    return;
+  }
+  grid.innerHTML = menus.map(m => {
+    const sel = selectedMenus.has(m.menu);
+    const qty = sel ? selectedMenus.get(m.menu) : ((m.category==='일품메뉴'||m.category==='냠냠메뉴') ? 20 : 10);
+    const ings = m.ingredients.slice(0,4).map(i => `<span class="ing-chip">${i.name}</span>`).join('');
+    const more = m.ingredients.length > 4 ? `<span class="ing-chip" style="color:var(--t3)">+${m.ingredients.length-4}</span>` : '';
+    const saleBadge = m.on_sale === 'O' ? '<span class="badge bg" style="margin-left:4px">판매중</span>' : '';
+    const safeMenu = m.menu.replace(/"/g,'&quot;');
+    return `<div class="menu-card${sel?' selected':''}" data-menu="${safeMenu}" onclick="toggleMenu(this.dataset.menu)">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2px">
+        <div class="menu-name">${m.menu}</div>
+        <div class="chk${sel?' on':''}"></div>
+      </div>
+      <div class="menu-cat">${m.category}${saleBadge}</div>
+      <div class="menu-ing-list">${ings}${more}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+        ${m.price ? `<div style="font-size:12px;color:var(--t2);font-family:'DM Mono',monospace">${m.price.toLocaleString()}원</div>` : '<div></div>'}
+        <div onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:4px">
+          <button onclick="changeQty('${safeMenu}',-1)" style="width:22px;height:22px;border-radius:4px;border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">−</button>
+          <span style="font-size:13px;font-family:'DM Mono',monospace;color:${sel?'var(--accent)':'var(--t3)'};min-width:28px;text-align:center;font-weight:600">${qty}</span>
+          <button onclick="changeQty('${safeMenu}',1)" style="width:22px;height:22px;border-radius:4px;border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">+</button>
+          <button onclick="printMenu('${safeMenu}')" title="이 메뉴 인쇄" style="width:22px;height:22px;border-radius:4px;border:1px solid var(--border);background:var(--bg2);color:var(--t2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">🖨</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  updateStats();
+}
+
+function toggleMenu(name) {
+  if (selectedMenus.has(name)) selectedMenus.delete(name);
+  else {
+    const m = ALL_MENUS.find(x => x.menu === name);
+    const defaultQty = (m && (m.category === '일품메뉴' || m.category === '냠냠메뉴')) ? 20 : 10;
+    selectedMenus.set(name, defaultQty);
+  }
+  renderMenuGrid();
+}
+
+function changeQty(name, delta) {
+  const cur = selectedMenus.has(name) ? selectedMenus.get(name) : 10;
+  const next = Math.max(1, cur + delta);
+  selectedMenus.set(name, next);
+  renderMenuGrid();
+}
+
+function clearSelection() {
+  selectedMenus.clear();
+  renderMenuGrid();
+}
+
+function updateStats() {
+  document.getElementById('st-sel').textContent = selectedMenus.size;
+  const ingSet = new Set();
+  selectedMenus.forEach(name => {
+    const m = ALL_MENUS.find(x => x.menu === name);
+    if (m) m.ingredients.forEach(i => ingSet.add(i.name));
+  });
+  document.getElementById('st-ing').textContent = ingSet.size;
+}
+
+// ===================== 공정·식재료 생성 =====================
+function applySelection() {
+  if (selectedMenus.size === 0) { alert('메뉴를 하나 이상 선택해주세요'); return; }
+  const chosen = ALL_MENUS.filter(m => selectedMenus.has(m.menu))
+    .map(m => ({ ...m, qty: selectedMenus.get(m.menu) || 10 }));
+
+  const ingMap = {};
+  chosen.forEach(m => {
+    const q = m.qty || 10;
+    m.ingredients.forEach(ing => {
+      const k = ing.name;
+      if (!ingMap[k]) ingMap[k] = { name: k, total: 0, unit: ing.unit || 'g', menus: [] };
+      ingMap[k].total += (ing.amount || 0) * q;
+      if (!ingMap[k].menus.includes(m.menu)) ingMap[k].menus.push(m.menu);
+    });
+  });
+  const ings = Object.values(ingMap).sort((a,b) => b.menus.length - a.menus.length);
+  const combined = ings.filter(i => i.menus.length > 1 && i.total > 0);
+  const singles  = ings.filter(i => i.menus.length === 1 && i.total > 0);
+  const noAmt    = ings.filter(i => i.total === 0);
+  processedData = { chosen, ings, combined, singles, noAmt };
+
+  renderProcess(processedData);
+  renderIngredients(processedData);
+  renderStockNeeded();
+  showTab('ingredients');
+}
+
+// ===================== 조리 공정 =====================
+// 처리법 텍스트에서 핵심 동작 키워드 추출 (동일 여부 비교용)
+function extractPrepMethod(instr) {
+  const keywords = ['챠퍼','다지','으깨','갈아','데치','채썰','깍둑','찢','불리','씻','헹','짜','찌','썰'];
+  return keywords.filter(k => instr.includes(k)).join(',');
+}
+// 지시문 앞 번호/접두사 제거 + 너무 길면 자르기
+function formatInstr(s) {
+  return s.replace(/^[\d.·•\-]+\s*/, '').trim().substring(0, 120);
+}
+
+function renderProcess({ chosen, ings, combined }) {
+  document.getElementById('process-empty').style.display = 'none';
+  document.getElementById('process-content').style.display = 'block';
+  const saved = combined.reduce((s,i) => s + i.menus.length - 1, 0);
+  document.getElementById('proc-stats').innerHTML = `
+    <div class="stat"><div class="stat-n">${chosen.length}</div><div class="stat-l">오늘 메뉴</div></div>
+    <div class="stat"><div class="stat-n" style="color:var(--green)">${combined.length}</div><div class="stat-l">통합 재료</div></div>
+    <div class="stat"><div class="stat-n" style="color:var(--green)">${saved}</div><div class="stat-l">절약 공정</div></div>
+    <div class="stat"><div class="stat-n">${ings.length}</div><div class="stat-l">총 식재료</div></div>`;
+
+  let html = combined.length === 0
+    ? '<div style="color:var(--t3);font-size:13px;padding:8px">공통 재료 없음</div>'
+    : combined.map((ing, i) => {
+        // 재료별로 메뉴 각각의 처리법 추출
+        const menuInstructions = ing.menus.map(menuName => {
+          const m = chosen.find(x => x.menu === menuName);
+          if (!m || !m.recipe) return null;
+          const lines = m.recipe.split(/\n/);
+          // 해당 재료명이 언급된 줄 찾기
+          const matched = lines.filter(l => l.includes(ing.name));
+          if (!matched.length) return null;
+          // 첫 번째 언급 줄 (전처리 관련 줄 우선)
+          const prep = matched.find(l =>
+            /썰|다지|찢|데치|으깨|갈|씻|헹|짜|제거|손질|불리|준비|채썰|깍둑|채소/.test(l)
+          ) || matched[0];
+          const ingData = m.ingredients.find(i => i.name === ing.name);
+          const gramsEach = ingData ? ingData.amount : 0;
+          const gramsTotal = gramsEach && m.qty ? gramsEach * m.qty : gramsEach;
+          return { menu: menuName, qty: m.qty, gramsEach, gramsTotal, unit: ingData ? (ingData.unit||'g') : 'g', instr: prep.replace(/^\d+[.)\s]+/, '').trim() };
+        }).filter(Boolean);
+
+        // 모든 메뉴의 처리법이 동일한지 체크 (핵심 키워드 비교)
+        const allSame = menuInstructions.length > 1 && menuInstructions.every(
+          x => extractPrepMethod(x.instr) === extractPrepMethod(menuInstructions[0].instr)
+        );
+
+        return `
+        <div class="proc-item">
+          <div class="proc-num">${i+1}</div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+              <span class="proc-action"><strong>${ing.name}</strong></span>
+              <span style="font-size:12px;color:var(--accent);font-family:'DM Mono',monospace">${ing.total > 0 ? ing.total+'g 필요' : ''}</span>
+            </div>
+            ${allSame
+              ? `<div style="font-size:13px;color:var(--text);background:var(--bg2);border-radius:6px;padding:7px 10px;border-left:3px solid var(--accent);margin-bottom:6px">
+                  ${formatInstr(menuInstructions[0].instr)}
+                 </div>
+                 <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px">
+                   ${menuInstructions.map(x => x.gramsTotal ? `<span style="font-size:11px;color:var(--t3)">${x.menu} <span style="font-family:'DM Mono',monospace;color:var(--accent)">${x.gramsTotal}${x.unit}</span></span>` : '').join('')}
+                 </div>
+                 <div style="font-size:11px;color:var(--t3);margin-bottom:4px">전 메뉴 동일 처리</div>`
+              : menuInstructions.length > 0
+                ? menuInstructions.map(x => `
+                    <div style="margin-bottom:5px">
+                      <div style="font-size:11px;color:var(--t3);margin-bottom:2px">${x.menu} <span style="color:var(--accent)">×${x.qty}</span>${x.gramsTotal ? ` <span style="color:var(--t2);font-family:'DM Mono',monospace">(${x.gramsEach}${x.unit}×${x.qty} = <strong style="color:var(--accent)">${x.gramsTotal}${x.unit}</strong>)</span>` : ''}</div>
+                      <div style="font-size:13px;color:var(--text);background:var(--bg2);border-radius:6px;padding:6px 10px;border-left:3px solid var(--border2)">
+                        ${formatInstr(x.instr)}
+                      </div>
+                    </div>`).join('')
+                : `<div style="font-size:13px;color:var(--t2)">한번에 처리</div>`
+            }
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:5px">
+              ${ing.menus.map(m=>`<span class="dish-tag">${m}</span>`).join('')}
+              <span class="saving" style="margin-left:2px">✓ ${ing.menus.length}개 메뉴 통합</span>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+  document.getElementById('proc-combined').innerHTML = html;
+
+  document.getElementById('proc-recipes').innerHTML = chosen.map(m => `
+    <div class="card" style="margin-bottom:10px">
+      <div class="card-hd">
+        <div class="card-title">🍽️ ${m.menu} <span style="font-size:12px;color:var(--accent);font-family:'DM Mono',monospace">×${m.qty}</span></div>
+        <span class="badge bb">${m.category}</span>
+      </div>
+      <div class="tbl-wrap"${m.recipe?' style="margin-bottom:.75rem"':''}>
+        <table><thead><tr><th>재료</th><th>1인분</th><th>${m.qty}인분</th></tr></thead>
+        <tbody>${m.ingredients.map(i=>`<tr><td>${i.name}</td><td class="amt" style="color:var(--t2)">${i.amount>0?i.amount+(i.unit||'g'):'적량'}</td><td class="amt">${i.amount>0?(i.amount*m.qty)+(i.unit||'g'):'적량'}</td></tr>`).join('')}</tbody>
+        </table>
+      </div>
+      ${m.recipe ? `<div style="font-size:11px;color:var(--t3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">조리법</div><div class="recipe-text">${m.recipe}</div>` : ''}
+    </div>`).join('');
+}
+
+// ===================== 식재료 =====================
+function renderIngredients({ ings, combined, singles, noAmt }) {
+  document.getElementById('ing-empty').style.display = 'none';
+  document.getElementById('ing-content').style.display = 'block';
+  document.getElementById('ing-stats').innerHTML = `
+    <div class="stat"><div class="stat-n">${ings.length}</div><div class="stat-l">총 식재료</div></div>
+    <div class="stat"><div class="stat-n" style="color:var(--green)">${combined.length}</div><div class="stat-l">공통 재료</div></div>
+    <div class="stat"><div class="stat-n">${singles.length}</div><div class="stat-l">단독 재료</div></div>
+    <div class="stat"><div class="stat-n">${noAmt.length}</div><div class="stat-l">양념/적량</div></div>`;
+
+  const filters = ['전체','공통재료','단독재료','양념/적량'];
+  document.getElementById('ing-filters').innerHTML = filters.map((f,i) =>
+    `<button class="fbtn ${i===0?'on':''}" onclick="filterIng('${f}',this)">${f}</button>`
+  ).join('');
+  renderIngTable('전체');
+}
+
+function renderIngTable(filter) {
+  if (!processedData) return;
+  const { ings, combined, singles, noAmt } = processedData;
+  const list = filter==='전체' ? ings : filter==='공통재료' ? combined : filter==='단독재료' ? singles : noAmt;
+  document.getElementById('ing-table').innerHTML = list.map(ing =>
+    `<tr>
+      <td><strong>${ing.name}</strong>${ing.menus.length>1&&ing.total>0 ? ' <span class="badge bg">통합</span>' : ''}</td>
+      <td class="amt">${ing.total>0 ? ing.total+(ing.unit||'g') : '<span style="color:var(--t3)">적량</span>'}</td>
+      <td><div class="dish-tags">${ing.menus.map(m=>`<span class="dish-tag">${m}</span>`).join('')}</div></td>
+    </tr>`
+  ).join('');
+}
+
+function filterIng(f, btn) {
+  document.querySelectorAll('#ing-filters .fbtn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderIngTable(f);
+}
+
+
+// ===================== 선택 저장/불러오기 =====================
+function saveSelection() {
+  if (selectedMenus.size === 0) { alert('저장할 메뉴를 먼저 선택하세요'); return; }
+  const data = [];
+  selectedMenus.forEach((qty, name) => data.push({ name, qty }));
+  const json = JSON.stringify({ saved: new Date().toLocaleString('ko-KR'), menus: data });
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
+  a.download = '바비야기_메뉴선택_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+function loadSelection() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.json';
+  inp.onchange = e => {
+    const f = e.target.files[0]; if (!f) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.menus || !Array.isArray(data.menus)) throw new Error('형식 오류');
+        selectedMenus.clear();
+        data.menus.forEach(({ name, qty }) => {
+          if (ALL_MENUS.find(m => m.menu === name)) selectedMenus.set(name, qty || 10);
+        });
+        renderMenuGrid();
+        // 공정·식재료도 자동 생성
+        if (selectedMenus.size > 0) applySelection();
+        alert(`✅ ${data.menus.length}개 메뉴 불러오기 완료 (저장: ${data.saved||''})`);
+      } catch(err) { alert('파일 오류: ' + err.message); }
+    };
+    reader.readAsText(f);
+  };
+  inp.click();
+}
+
+
+// ===================== 주문 관리 =====================
+let ordTabFilter = 'all';   // all | sub5 | sub8 | sub12 | single
+let ordStatusFilter = 'all'; // all | pending | ready | 배송 | 픽업
+let currentModalOrdId = null;
+
+function doDrag(e,el){e.preventDefault();el.classList.add('drag')}
+function doDragLeave(e,el){el.classList.remove('drag')}
+function doDrop(e){e.preventDefault();e.currentTarget.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)parseOrderFile(f)}
+function handleOrdFile(e){parseOrderFile(e.target.files[0])}
+
+function splitCSVLine(line, s) {
+  if (s === '\t') return line.split('\t').map(v => v.trim().replace(/^"|"$/g,''));
+  const result = []; let cur = '', inQ = false;
+  for (let c of line) {
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+    else cur += c;
+  }
+  result.push(cur.trim()); return result;
+}
+
+let currentImportFilename = '';
+function parseOrderFile(file) {
+  currentImportFilename = file.name;
+  const ext = file.name.split('.').pop().toLowerCase();
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      let rows = [];
+      if (ext === 'xlsx' || ext === 'xls') {
+        const wb = XLSX.read(ev.target.result, {type:'array'});
+        rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {raw:false, defval:''});
+      } else {
+        let text = ev.target.result.replace(/^\uFEFF/, '');
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) { alert('데이터가 없습니다'); return; }
+        const sep = lines[0].includes('\t') ? '\t' : ',';
+        const headers = splitCSVLine(lines[0], sep);
+        rows = lines.slice(1).map(line => {
+          const vals = splitCSVLine(line, sep);
+          const obj = {}; headers.forEach((h,i) => obj[h] = vals[i] || '');
+          return obj;
+        }).filter(r => Object.values(r).some(v => v));
+      }
+      buildOrders(rows);
+    } catch(err) { alert('파일 오류: ' + err.message); }
+  };
+  if (ext==='xlsx'||ext==='xls') reader.readAsArrayBuffer(file);
+  else reader.readAsText(file, 'utf-8');
+}
+
+function buildOrders(rows) {
+  const map = {};
+  rows.forEach(r => {
+    const id = r['주문번호']||r['order_id']||r['id']||('ROW-'+Math.random());
+    const rawDate = r['주문일시']||r['주문일']||r['결제일']||r['날짜']||r['datetime']||r['발송예정일']||r['수령일시']||'';
+    const prodRaw = r['상품정보(상세)']||r['상품명']||r['product']||r['메뉴명']||'';
+    const memoRaw = r['메모']||r['요청사항']||r['고객메모']||'';
+
+    if (!map[id]) {
+      const phone1 = r['휴대폰']||r['주문자 휴대폰']||'';
+      const phone2 = r['수령인 휴대폰']||r['연락처']||r['phone']||'';
+      const addr1  = r['주소']||r['배송지']||r['수령인 주소']||r['addr']||'';
+      const addr2  = r['상세주소']||r['나머지 주소']||'';
+      const subRaw = r['구독유형']||r['상품유형']||r['주문유형']||'';
+      const sessionRaw = r['회차']||r['구독회차']||r['남은회차']||'';
+
+      // 상품정보에서 미리 파싱
+      const parsed = prodRaw ? parseBabiyagiProduct(prodRaw) : {};
+
+      // 알러지: 열 우선, 없으면 상품정보에서 추출한 값
+      const allergyCol = r['알레르기']||r['알러지']||'';
+      const allergyFinal = allergyCol || (parsed.allergy && parsed.allergy !== '해당없음' ? parsed.allergy : '');
+
+      // 보냉가방: 열 우선, 없으면 파싱값
+      const coolBagCol = r['보냉가방']||r['아이스백']||'';
+      const coolBagFinal = coolBagCol || (parsed.coolBag && parsed.coolBag.length ? parsed.coolBag.join(', ') : '');
+
+      map[id] = {
+        id, rawDate,
+        name:       r['주문자명']||r['수령인']||r['고객명']||r['name']||'',
+        phone:      phone1 || phone2,
+        addr:       (addr2 ? addr1+' '+addr2 : addr1).trim(),
+        doorPwd:    r['공동현관비밀번호']||r['공동현관 비밀번호']||r['현관비번']||'',
+        amount:     r['결제금액']||r['금액']||'',
+        allergy:    allergyFinal,
+        coolBag:    coolBagFinal,
+        extraMenu:  r['추가메뉴']||r['추가상품']||'',
+        memo:       memoRaw,
+        subType:    detectSubType(subRaw, prodRaw),
+        session:    sessionRaw,
+        datetime:   parsed.deliveryDate || parseDate(rawDate),
+        type:       parsed.delivery ? '배송' : detectType(r, prodRaw),
+        deliveryZone: parsed.delivery || '',
+        dietMenu:   parsed.dietMenu || [],
+        babiProduct: parsed.babiProduct || [],
+        status:     'pending',
+        items:      parsed.dietMenu && parsed.dietMenu.length ? parsed.dietMenu.map(d=>({menu:d,qty:1})) : []
+      };
+    }
+    // 기존 items가 없으면 prodRaw에서 추가 파싱 시도
+    if (prodRaw && map[id].items.length === 0) {
+      const qty = parseInt(r['수량']||r['qty']||'0') || 0;
+      const fb = parseProductField(prodRaw, qty);
+      map[id].items.push(...fb.items);
+    }
+  });
+
+  const newOrders = Object.values(map).filter(o => o.name || o.items.length > 0);
+
+  if (newOrders.length === 0) { alert('주문 데이터를 찾을 수 없습니다.'); return; }
+
+  // _importId 태깅
+  const importId = 'imp_' + Date.now();
+  newOrders.forEach(o => { o._importId = importId; });
+
+  // 기존 데이터 유지: 주문번호 중복이면 기존 데이터 우선
+  const existingIds = new Set(allOrders.map(o => o.id));
+  const toAdd = newOrders.filter(o => !existingIds.has(o.id));
+  const skipped = newOrders.length - toAdd.length;
+  allOrders = [...allOrders, ...toAdd];
+
+  // 임포트 이력 기록
+  const fname = (typeof currentImportFilename !== 'undefined') ? currentImportFilename : '파일';
+  importHistory.push({
+    id: importId,
+    filename: fname,
+    date: new Date().toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}),
+    count: toAdd.length
+  });
+
+  saveOrdersToStorage();
+  closeImportModal();
+  renderOrdersUI();
+  // DB에 비동기 저장
+  insertOrdersToDB(toAdd, importId, fname).then(() => renderImportHistory());
+  const msg = skipped > 0
+    ? `✅ ${toAdd.length}건 추가됨 (중복 ${skipped}건 제외, 전체 ${allOrders.length}건)`
+    : `✅ ${toAdd.length}건 추가됨 (전체 ${allOrders.length}건)`;
+  alert(msg);
+}
+
+function detectSubType(subRaw, prod) {
+  const s = (subRaw + prod).toLowerCase();
+  if (s.includes('12회')||s.includes('12차')) return 'sub12';
+  if (s.includes('8회')||s.includes('8차'))  return 'sub8';
+  if (s.includes('5회')||s.includes('5차'))  return 'sub5';
+  if (s.includes('정기')||s.includes('구독')) return 'sub5'; // 기본 정기
+  return 'single';
+}
+
+// ===================== 바비야기 상품정보(상세) 전용 파서 =====================
+function parseBabiyagiProduct(raw) {
+  const s = String(raw || '').trim();
+  const result = {
+    deliveryDate: null,
+    dietMenu:     [],   // 유아식단 카테고리 목록
+    allergy:      '',
+    delivery:     '',   // 배송 지역
+    coolBag:      [],   // 보냉가방 선택
+    babiProduct:  [],   // 바비야기 제품(김치 등)
+  };
+
+  // 1) 날짜: 3/31(화), 4/3(금) 형태
+  const dateM = s.match(/(\d{1,2})\/(\d{1,2})\s*[（(]?[월화수목금토일][）)]?/);
+  if (dateM) {
+    const mo = parseInt(dateM[1]), dd = parseInt(dateM[2]);
+    const yr = new Date().getFullYear();
+    try { result.deliveryDate = new Date(yr, mo - 1, dd); } catch(e) {}
+  }
+
+  // 2) 유아식단선택 = (일품+냠냠)+영양밥 + 덮밥소스
+  const dietM = s.match(/유아식단선택\s*=\s*([^\n알배보바]+)/);
+  if (dietM) {
+    let dietRaw = dietM[1].trim();
+    // 다음 키워드 앞에서 자르기
+    dietRaw = dietRaw.replace(/알러지체크.*$/,'').replace(/배송선택.*$/,'').replace(/보냉.*$/,'').trim();
+    // 괄호 제거 후 + 또는 공백으로 분리
+    dietRaw = dietRaw.replace(/[()（）]/g, '');
+    const parts = dietRaw.split(/[+\s]+/).map(p => p.trim()).filter(p => p.length > 1);
+    result.dietMenu = parts;
+  }
+
+  // 3) 알러지체크
+  const allergyM = s.match(/알러지체크\s*=\s*([^\s배보바(（\n]+)/);
+  if (allergyM) result.allergy = allergyM[1].trim();
+
+  // 4) 배송선택 (지역명)  – "/" 포함될 수 있어 (1개) 전까지
+  const delivM = s.match(/배송선택\s*=\s*([^(（\n]+?)\s*(?:\(\d+개\)|$)/);
+  if (delivM) result.delivery = delivM[1].trim().replace(/\s*\(\d+개?\)/g,'').trim();
+
+  // 5) 보냉가방 선택 – 여러 개 가능
+  const coolMatches = [...s.matchAll(/보냉가방 선택\s*=\s*([^(（/\n]+)/g)];
+  result.coolBag = coolMatches.map(m => m[1].trim()
+    .replace(/바비야기\s*/,'').replace(/\s*\(\d+개?\)/g,'').trim()
+  ).filter(Boolean);
+
+  // 6) 바비야기 제품 (스무디, 퓨레, 김치 등)
+  const babiMatches = [...s.matchAll(/바비야기 제품[^=]*=\s*([^(（/\n]+)/g)];
+  result.babiProduct = babiMatches.map(m => m[1].trim()
+    .replace(/\s*\(\d+개?\)/g,'').trim()
+  ).filter(Boolean);
+
+  return result;
+}
+
+// 다음 화/금 배송일 계산
+function getNextDeliveryDate(fromDate) {
+  const d = fromDate ? new Date(fromDate) : new Date();
+  // 0=일,1=월,2=화,3=수,4=목,5=금,6=토
+  const day = d.getDay();
+  // 화요일=2, 금요일=5
+  let daysToTue = (2 - day + 7) % 7 || 7;
+  let daysToFri = (5 - day + 7) % 7 || 7;
+  const minDays = Math.min(daysToTue, daysToFri);
+  const next = new Date(d);
+  next.setDate(d.getDate() + minDays);
+  return next;
+}
+
+// 상품정보(상세) 파싱 – 날짜 추출 + 유아식단선택 이후 파싱
+function parseProductField(raw, fallbackQty) {
+  const s = String(raw).trim();
+  const results = [];
+
+  // 1) 날짜 추출 (예: 3/31, 3월31일, 20250331 등)
+  let deliveryDate = null;
+  const dateMatch = s.match(/(\d{1,2})[\/월\-](\d{1,2})[일]?/);
+  if (dateMatch) {
+    const mo = parseInt(dateMatch[1]);
+    const dd = parseInt(dateMatch[2]);
+    const yr = new Date().getFullYear();
+    deliveryDate = new Date(yr, mo-1, dd);
+  }
+
+  // 2) '유아식단선택=' 이후 파싱 (있으면 우선)
+  const dietIdx = s.indexOf('유아식단선택=');
+  const parseStr = dietIdx !== -1 ? s.slice(dietIdx + '유아식단선택='.length) : s;
+
+  // 3) 세그먼트 분리 (쉼표 또는 줄바꿈 또는 / 구분)
+  const segments = parseStr
+    .split(/[,;\n]+/)
+    .map(x => x.trim())
+    .filter(x => x && x.length > 0);
+
+  for (const seg of segments) {
+    // 수량 추출
+    const qtyMatch = seg.match(/[x×\*](\d+)|\((\d+)\s*개?\)|(\d+)\s*개/);
+    let qty = fallbackQty || 1;
+    if (qtyMatch) qty = parseInt(qtyMatch[1]||qtyMatch[2]||qtyMatch[3]) || 1;
+
+    // 이름 정리
+    let name = seg
+      .replace(/^\d+[.)\s]+/,'')
+      .replace(/[x×\*]\d+/g,'')
+      .replace(/\(\d+\s*개?\)/g,'')
+      .replace(/\d+\s*개/g,'')
+      .replace(/배송형태=[^,\s]*/g,'')
+      .replace(/\[.*?\]/g,'')
+      .replace(/유아식단선택=[^,]*/g,'')
+      .replace(/날짜[=:][^,\s]*/gi,'')
+      .replace(/\d{1,2}[\/월](\d{1,2})[일]?/g,'')
+      .replace(/\s*[=]\s*[가-힣a-zA-Z0-9\s]+$/,'')
+      .replace(/\/\s*$/,'')
+      .trim();
+
+    // 날짜/숫자만 남은 것, 빈 것, 너무 짧은 것 제외
+    if (!name || name.length < 2) continue;
+    if (/^\d+$/.test(name)) continue;
+    if (name.length > 60) name = name.substring(0,60);
+    results.push({ menu: name, qty });
+  }
+
+  // 파싱 실패 시 원본 정리해서 반환
+  if (!results.length) {
+    const fallback = dietIdx !== -1
+      ? s.slice(dietIdx + '유아식단선택='.length).split(/[,;\n]/)[0].trim()
+      : cleanProd(raw);
+    if (fallback) results.push({ menu: fallback, qty: fallbackQty||1 });
+  }
+
+  return { items: results, deliveryDate };
+}
+
+function parseDate(s) {
+  if (!s) return null;
+  const str = String(s).trim();
+  const m = str.match(/(\d{4})[-./\s]?(\d{2})[-./\s]?(\d{2})(?:[T\s](\d{2}):(\d{2}))?/);
+  if (m) { const [,y,mo,d,h='00',mn='00'] = m; return new Date(`${y}-${mo}-${d}T${h}:${mn}:00`); }
+  const d = new Date(s); return isNaN(d) ? null : d;
+}
+function detectType(r, prod) {
+  const all = (JSON.stringify(r) + prod).toLowerCase();
+  if (all.includes('픽업')||all.includes('pickup')) return '픽업';
+  return '배송';
+}
+function cleanProd(s) {
+  return String(s).replace(/^\d+/,'').replace(/배송형태=[^\s,]*/g,'')
+    .replace(/\(\d+개\)/g,'').replace(/\[.*?\]/g,'')
+    .replace(/\s*=.*$/,'').replace(/\/\s*$/,'').trim().substring(0,50)||s.substring(0,50);
+}
+
+// 샘플
+function loadSampleOrders(e) {
+  e.stopPropagation();
+  const now = new Date();
+  const yes = new Date(now); yes.setDate(now.getDate()-1);
+  allOrders = [
+    {id:'ORD-001',name:'김민지',phone:'010-1234-5678',addr:'수원시 영통구 봉영로 123',doorPwd:'1234#',amount:'25000',rawDate:'',datetime:now,type:'배송',status:'pending',allergy:'견과류',coolBag:'O',extraMenu:'',subType:'sub5',session:'3회차',items:[{menu:'감자명란국',qty:2},{menu:'2색 수제소세지',qty:1}]},
+    {id:'ORD-002',name:'박서준',phone:'010-2345-6789',addr:'수원시 장안구',doorPwd:'',amount:'10000',rawDate:'',datetime:now,type:'픽업',status:'ready',allergy:'',coolBag:'',extraMenu:'',subType:'single',session:'',items:[{menu:'기버터관자감바스',qty:1}]},
+    {id:'ORD-003',name:'이수연',phone:'010-3456-7890',addr:'용인시 수지구 풍덕천로 45',doorPwd:'*7890',amount:'32000',rawDate:'',datetime:now,type:'배송',status:'pending',allergy:'',coolBag:'O',extraMenu:'달래장 추가',subType:'sub8',session:'5회차',items:[{menu:'가자미쑥국',qty:2},{menu:'2색 수제소세지',qty:2}]},
+    {id:'ORD-004',name:'정다은',phone:'010-5678-9012',addr:'수원시 권선구',doorPwd:'',amount:'20000',rawDate:'',datetime:now,type:'픽업',status:'pending',allergy:'갑각류',coolBag:'',extraMenu:'',subType:'sub12',session:'9회차',items:[{menu:'기버터관자감바스',qty:1},{menu:'감자명란국',qty:1}]},
+    {id:'ORD-999',name:'과거주문',phone:'',addr:'',doorPwd:'',amount:'',rawDate:'',datetime:yes,type:'배송',status:'pending',allergy:'',coolBag:'',extraMenu:'',subType:'single',session:'',items:[{menu:'가자미쑥국',qty:1}]},
+  ];
+  const importId = 'imp_sample_' + Date.now();
+  allOrders.forEach(o => { o._importId = importId; });
+  importHistory.push({ id: importId, filename: '샘플데이터', date: new Date().toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}), count: allOrders.length });
+  saveOrdersToStorage();
+  renderOrdersUI();
+}
+
+function setTodayFilter() {
+  const next = getNextDeliveryDate(new Date());
+  const ymd  = next.getFullYear()+'-'+String(next.getMonth()+1).padStart(2,'0')+'-'+String(next.getDate()).padStart(2,'0');
+  const fromEl = document.getElementById('filter-from');
+  const toEl   = document.getElementById('filter-to');
+  if (fromEl) fromEl.value = ymd;
+  if (toEl)   toEl.value   = ymd;
+  const days = ['일','월','화','수','목','금','토'];
+  const btn  = document.querySelector('[onclick="setTodayFilter()"]');
+  if (btn) btn.textContent = `다음배송 (${next.getMonth()+1}/${next.getDate()} ${days[next.getDay()]})`;
+  applyAllFilters();
+}
+function clearDateFilter() {
+  const fromEl = document.getElementById('filter-from');
+  const toEl   = document.getElementById('filter-to');
+  if (fromEl) fromEl.value = '';
+  if (toEl)   toEl.value   = '';
+  // 다음 배송일 버튼 라벨 갱신
+  const next = getNextDeliveryDate(new Date());
+  const days = ['일','월','화','수','목','금','토'];
+  const btn  = document.querySelector('[onclick="setTodayFilter()"]');
+  if (btn) btn.textContent = `다음배송 (${next.getMonth()+1}/${next.getDate()} ${days[next.getDay()]})`;
+  applyAllFilters();
+}
+
+function switchOrdTab(type, el) {
+  ordTabFilter = type;
+  document.querySelectorAll('[id^="ordtab-"]').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  applyOrdTypeFilter();
+}
+function filterOrdStatus(s, btn) {
+  ordStatusFilter = s;
+  document.querySelectorAll('#ord-content .filters .fbtn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  applyOrdTypeFilter();
+}
+
+function applyAllFilters() {
+  const fromEl = document.getElementById('filter-from');
+  const toEl   = document.getElementById('filter-to');
+  const fromVal = fromEl ? fromEl.value : '';
+  const toVal   = toEl   ? toEl.value   : '';
+  const from = fromVal ? new Date(fromVal+'T00:00:00') : null;
+  const to   = toVal   ? new Date(toVal+'T23:59:59')   : null;
+  filteredOrders = allOrders.filter(o => {
+    const dt = o.datetime;
+    if (!dt) return true;
+    if (from && dt < from) return false;
+    if (to   && dt > to)   return false;
+    return true;
+  }).sort((a,b) => (a.datetime||new Date(0)) - (b.datetime||new Date(0)));
+  const excluded = allOrders.length - filteredOrders.length;
+  document.getElementById('filter-label').textContent = excluded > 0 ? `${excluded}건 제외` : '';
+  updateOrdStats();
+  applyOrdTypeFilter();
+}
+
+function applyOrdTypeFilter() {
+  let list = filteredOrders;
+  if (ordTabFilter !== 'all') list = list.filter(o => o.subType === ordTabFilter);
+  if (ordStatusFilter === 'pending') list = list.filter(o => o.status === 'pending');
+  else if (ordStatusFilter === 'ready')   list = list.filter(o => o.status === 'ready');
+  else if (ordStatusFilter === '배송')   list = list.filter(o => o.type === '배송');
+  else if (ordStatusFilter === '픽업')   list = list.filter(o => o.type === '픽업');
+  renderOrdGrid(list);
+}
+
+function updateOrdStats() {
+  const ord = filteredOrders;
+  const ready = ord.filter(o=>o.status==='ready').length;
+  const totalQty = ord.reduce((s,o)=>s+o.items.reduce((ss,i)=>ss+(i.qty||1),0),0);
+  const pct = ord.length>0 ? Math.round(ready/ord.length*100) : 0;
+  // 배송일별 그룹
+  const dateGroups = {};
+  ord.forEach(o => {
+    if (o.datetime) {
+      const dk = o.datetime.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric',weekday:'short'});
+      dateGroups[dk] = (dateGroups[dk]||0) + 1;
+    }
+  });
+  const dateGroupHtml = Object.entries(dateGroups).map(([d,n])=>
+    `<span style="font-size:11px;background:var(--bdim);color:var(--blue);padding:1px 7px;border-radius:10px">${d} (${n}건)</span>`
+  ).join('');
+
+  document.getElementById('ord-stats').innerHTML = `
+    <div class="stat"><div class="stat-n">${ord.length}</div><div class="stat-l">전체 주문</div></div>
+    <div class="stat"><div class="stat-n">${ord.filter(o=>o.subType!=='single').length}</div><div class="stat-l">🔄 정기</div></div>
+    <div class="stat"><div class="stat-n">${ord.filter(o=>o.subType==='single').length}</div><div class="stat-l">📦 단품</div></div>
+    <div class="stat"><div class="stat-n" style="color:var(--green)">${ready}</div><div class="stat-l">✅ 완료</div></div>
+    <div class="stat"><div class="stat-n">${totalQty}</div><div class="stat-l">총 수량</div></div>`;
+  // 날짜 그룹 표시
+  const dgEl = document.getElementById('ord-date-groups');
+  if (dgEl) dgEl.innerHTML = dateGroupHtml ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${dateGroupHtml}</div>` : '';
+  document.getElementById('ord-prog-lbl').textContent = ready+'/'+ord.length;
+  document.getElementById('ord-pbar').style.width = pct+'%';
+}
+
+function renderOrdGrid(orders) {
+  const grid = document.getElementById('ord-grid');
+  if (orders.length === 0) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">📦</div><div class="empty-title">해당 주문이 없습니다</div></div>';
+    return;
+  }
+  grid.innerHTML = orders.map(o => {
+    const isReady = o.status === 'ready';
+    const totalQty = o.items.reduce((s,i)=>s+(i.qty||1),0);
+    const typeBadge = o.type==='픽업' ? '<span class="badge ba">🏪 픽업</span>' : '<span class="badge bb">🚚 배송</span>';
+    const subLabel = {sub5:'5회',sub8:'8회',sub12:'12회',single:'단품'}[o.subType]||'단품';
+    const subBadge = o.subType!=='single' ? `<span class="sub-badge">🔄 ${subLabel}${o.session?' '+o.session:''}</span>` : '';
+    const addrClean = (o.addr||'').replace(/^\d{5}\s*/,'').trim();
+    const safeId = o.id.replace(/'/g,"\\'");
+    const coolBagLabel = Array.isArray(o.coolBag) ? o.coolBag.join(' / ') : (o.coolBag||'');
+    const alerts = [
+      o.allergy && o.allergy !== '해당없음' ? '⚠️ '+o.allergy : '',
+      coolBagLabel ? '🧊 '+coolBagLabel : '',
+      o.extraMenu ? '➕ '+o.extraMenu : ''
+    ].filter(Boolean);
+
+    return `<div class="ord-card" style="cursor:pointer;${isReady?'opacity:.55;border-color:var(--border)':''}" onclick="openOrdModal('${safeId}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div>
+          <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+            <span style="font-size:15px;font-weight:700">${o.name||'(이름없음)'}</span>
+            ${typeBadge}${subBadge}
+          </div>
+          ${o.phone?`<div style="font-size:12px;color:var(--t2);margin-top:2px;font-family:'DM Mono',monospace">${o.phone}</div>`:''}
+          ${o.datetime?`<div style="font-size:11px;color:var(--blue);margin-top:2px">📅 ${o.datetime.toLocaleDateString('ko-KR',{month:'numeric',day:'numeric',weekday:'short'})}</div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          ${isReady
+            ? `<span class="badge bg" style="cursor:pointer" onclick="event.stopPropagation();setOrdStatus('${safeId}','pending')">✅ 완료</span>`
+            : `<span class="badge" style="background:var(--rdim);color:var(--red);cursor:pointer" onclick="event.stopPropagation();setOrdStatus('${safeId}','ready')">⏳ 준비중</span>`
+          }
+          <button class="print-btn" onclick="event.stopPropagation();printOrder('${safeId}')">🖨️</button>
+        </div>
+      </div>
+      ${addrClean?`<div style="font-size:11px;color:var(--t3);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📍 ${addrClean}${o.doorPwd?' 🔑'+o.doorPwd:''}</div>`:''}
+      ${o.deliveryZone?`<div style="font-size:11px;color:var(--blue);margin-bottom:4px">🚏 ${o.deliveryZone}</div>`:''}
+      ${o.dietMenu&&o.dietMenu.length?`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px">${o.dietMenu.map(d=>`<span style="font-size:11px;background:var(--adim2);color:var(--accent);padding:1px 7px;border-radius:10px">${d}</span>`).join('')}</div>`:''}
+      ${alerts.length?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px">${alerts.map(a=>`<span style="font-size:11px;background:var(--adim);color:var(--accent);padding:1px 6px;border-radius:4px">${a}</span>`).join('')}</div>`:''}
+      ${o.babiProduct&&o.babiProduct.length?`<div style="font-size:11px;color:var(--green);margin-bottom:4px">🥬 ${o.babiProduct.join(', ')}</div>`:''}
+      ${o.memo?`<div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:4px;padding:3px 7px;margin-bottom:4px;border-left:2px solid var(--border2)">💬 ${o.memo.substring(0,60)}${o.memo.length>60?'…':''}</div>`:''}
+      <div style="border-top:1px solid var(--border);padding-top:6px">
+        ${o.items.slice(0,3).map(it=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:var(--text)">${it.menu}</span><span class="ord-qty">${it.qty||1}개</span></div>`).join('')}
+        ${o.items.length>3?`<div style="font-size:11px;color:var(--t3);margin-top:2px">+ ${o.items.length-3}개 더 · 탭하여 전체 보기</div>`:''}
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
+        <span style="font-size:12px;color:var(--t3)">총 <strong style="color:var(--accent)">${totalQty}</strong>개</span>
+        ${o.amount?`<span style="font-size:12px;color:var(--t2);font-family:'DM Mono',monospace">${Number(String(o.amount).replace(/[^0-9]/g,'')||0).toLocaleString()}원</span>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setOrdStatus(id, status) {
+  const o = allOrders.find(x=>x.id===id);
+  if (o) {
+    o.status = status;
+    saveOrdersToStorage();
+    updateOrderInDB(o);
+    applyOrdTypeFilter();
+    updateOrdStats();
+  }
+}
+
+// 모달
+function openOrdModal(id) {
+  const o = allOrders.find(x=>x.id===id);
+  if (!o) return;
+  currentModalOrdId = id;
+  const subLabel = {sub5:'정기 5회',sub8:'정기 8회',sub12:'정기 12회',single:'단품/일회'}[o.subType]||'단품';
+  const addrClean = (o.addr||'').replace(/^\d{5}\s*/,'').trim();
+  const rows = [
+    ['이름', o.name||'-'],
+    ['연락처', o.phone||'-'],
+    ['배송유형', o.type + (o.subType!=='single'?` · ${subLabel}${o.session?' ('+o.session+')':''}`:` · ${subLabel}`)],
+    o.subType!=='single'&&o.session ? ['남은 회차', `<strong style="color:var(--accent)">${o.session}</strong>`] : null,
+    ['주소', addrClean||'-'],
+    o.deliveryZone ? ['🚏 배송지역', `<span style="color:var(--blue)">${o.deliveryZone}</span>`] : null,
+    o.doorPwd ? ['현관 비번', `<strong style="color:var(--accent);font-family:'DM Mono',monospace">${o.doorPwd}</strong>`] : null,
+    o.dietMenu&&o.dietMenu.length ? ['🥘 유아식단', `<div style="display:flex;gap:4px;flex-wrap:wrap">${o.dietMenu.map(d=>`<span style="font-size:12px;background:var(--adim2);color:var(--accent);padding:2px 8px;border-radius:10px">${d}</span>`).join('')}</div>`] : null,
+    o.allergy ? ['⚠️ 알레르기', `<strong style="color:var(--red)">${o.allergy}</strong>`] : null,
+    o.coolBag ? ['🧊 보냉가방', o.coolBag] : null,
+    o.babiProduct&&o.babiProduct.length ? ['🥬 바비야기제품', o.babiProduct.join(', ')] : null,
+    o.extraMenu ? ['➕ 추가메뉴', o.extraMenu] : null,
+    o.memo ? ['💬 요청사항', `<span style="color:var(--t2)">${o.memo}</span>`] : null,
+    o.amount ? ['결제금액', Number(String(o.amount).replace(/[^0-9]/g,'')||0).toLocaleString()+'원'] : null,
+  ].filter(Boolean);
+
+  const itemsHtml = o.items.map(it =>
+    `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px">${it.menu}</span>
+      <span class="ord-qty">${it.qty||1}개</span>
+    </div>`).join('');
+
+  document.getElementById('ord-modal-content').innerHTML = `
+    <div style="font-size:16px;font-weight:700;margin-bottom:1rem;padding-right:2rem">${o.name||'(이름없음)'}</div>
+    ${rows.map(([l,v])=>`<div class="modal-row"><span class="modal-label">${l}</span><span class="modal-val">${v}</span></div>`).join('')}
+    <div style="margin-top:1rem;font-size:12px;color:var(--t3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">주문 상품</div>
+    ${itemsHtml}`;
+
+  // 버튼 상태 반영
+  const isPending = o.status === 'pending';
+  document.getElementById('modal-pending-btn').style.opacity = isPending ? '1' : '.4';
+  document.getElementById('modal-ready-btn').style.opacity   = isPending ? '.4' : '1';
+  document.getElementById('ord-modal').style.display = 'block';
+}
+function closeOrdModal(e) {
+  if (e && e.target !== document.getElementById('ord-modal')) return;
+  document.getElementById('ord-modal').style.display = 'none';
+  currentModalOrdId = null;
+}
+function setOrdStatusFromModal(status) {
+  if (!currentModalOrdId) return;
+  setOrdStatus(currentModalOrdId, status);
+  // 버튼 상태 업데이트
+  const isPending = status === 'pending';
+  document.getElementById('modal-pending-btn').style.opacity = isPending ? '1' : '.4';
+  document.getElementById('modal-ready-btn').style.opacity   = isPending ? '.4' : '1';
+}
+
+// ============================================================
+// 주문 localStorage 관리
+// ============================================================
+
+
+// ============================================================
+// Supabase 동기화 레이어
+// localStorage = 오프라인 캐시 / Supabase = 단일 진실 공급원
+// ============================================================
+
+function setSyncBadge(state) {
+  const el = document.getElementById('sync-badge');
+  if (!el) return;
+  const map = {
+    syncing: ['🔄 동기화 중', 'var(--bdim)', 'var(--blue)'],
+    ok:      ['☁️ 동기화됨',  'var(--gdim)', 'var(--green)'],
+    offline: ['💾 로컬 저장', 'var(--adim)', 'var(--accent)'],
+    error:   ['⚠️ 오류',      'var(--rdim)', 'var(--red)'],
+  };
+  const [text, bg, color] = map[state] || map.offline;
+  el.textContent = text;
+  el.style.background = bg;
+  el.style.color = color;
+}
+
+// DB에서 전체 주문 로드
+async function loadOrdersFromDB() {
+  try {
+    setSyncBadge('syncing');
+    const { data, error } = await _sb.from('orders').select('*').order('datetime', { ascending: true });
+    if (error) throw error;
+    const { data: hist } = await _sb.from('import_history').select('*').order('imported_at', { ascending: false });
+
+    allOrders = (data || []).map(dbRowToOrder);
+    importHistory = (hist || []).map(h => ({
+      id: h.id, filename: h.filename, count: h.count,
+      date: new Date(h.imported_at).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})
+    }));
+    // 로컬 캐시도 갱신
+    saveOrdersToStorage();
+    setSyncBadge('ok');
+    return true;
+  } catch(e) {
+    console.warn('DB 로드 실패, 로컬 캐시 사용:', e);
+    setSyncBadge('offline');
+    return false;
+  }
+}
+
+// 신규 주문 배열을 DB에 upsert (기존 id 있으면 무시 - onConflict ignore)
+async function insertOrdersToDB(orders, importId, filename) {
+  try {
+    setSyncBadge('syncing');
+    const rows = orders.map(o => orderToDbRow(o));
+    // id 충돌 시 무시 (기존 데이터 우선)
+    const { error } = await _sb.from('orders').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
+    if (error) throw error;
+
+    await _sb.from('import_history').insert({
+      id: importId, filename, count: orders.length
+    });
+    setSyncBadge('ok');
+    return true;
+  } catch(e) {
+    console.warn('DB 저장 실패:', e);
+    setSyncBadge('offline');
+    return false;
+  }
+}
+
+// 단일 주문 상태/필드 업데이트
+async function updateOrderInDB(order) {
+  try {
+    const { error } = await _sb.from('orders').update(orderToDbRow(order)).eq('id', order.id);
+    if (error) throw error;
+    setSyncBadge('ok');
+  } catch(e) {
+    console.warn('DB 업데이트 실패:', e);
+    setSyncBadge('offline');
+  }
+}
+
+// 단일 주문 삭제
+async function deleteOrderFromDB(id) {
+  try {
+    const { error } = await _sb.from('orders').delete().eq('id', id);
+    if (error) throw error;
+  } catch(e) { console.warn('DB 삭제 실패:', e); }
+}
+
+// 전체 주문 삭제
+async function deleteAllOrdersFromDB() {
+  try {
+    await _sb.from('orders').delete().neq('id', '');
+    await _sb.from('import_history').delete().neq('id', '');
+  } catch(e) { console.warn('DB 전체 삭제 실패:', e); }
+}
+
+// JS 객체 → DB 행
+function orderToDbRow(o) {
+  return {
+    id:            o.id,
+    name:          o.name || '',
+    phone:         o.phone || '',
+    addr:          o.addr || '',
+    door_pwd:      o.doorPwd || '',
+    amount:        String(o.amount || ''),
+    allergy:       o.allergy || '',
+    cool_bag:      Array.isArray(o.coolBag) ? o.coolBag.join(', ') : (o.coolBag || ''),
+    extra_menu:    o.extraMenu || '',
+    memo:          o.memo || '',
+    sub_type:      o.subType || 'single',
+    session:       o.session || '',
+    delivery_zone: o.deliveryZone || '',
+    diet_menu:     JSON.stringify(o.dietMenu || []),
+    babi_product:  JSON.stringify(o.babiProduct || []),
+    items:         JSON.stringify(o.items || []),
+    status:        o.status || 'pending',
+    type:          o.type || '배송',
+    raw_date:      o.rawDate || '',
+    datetime:      (o.datetime instanceof Date && !isNaN(o.datetime)) ? o.datetime.toISOString() : null,
+    import_id:     o._importId || '',
+  };
+}
+
+// DB 행 → JS 객체
+function dbRowToOrder(r) {
+  const dt = r.datetime ? new Date(r.datetime) : null;
+  return {
+    id:           r.id,
+    name:         r.name || '',
+    phone:        r.phone || '',
+    addr:         r.addr || '',
+    doorPwd:      r.door_pwd || '',
+    amount:       r.amount || '',
+    allergy:      r.allergy || '',
+    coolBag:      r.cool_bag || '',
+    extraMenu:    r.extra_menu || '',
+    memo:         r.memo || '',
+    subType:      r.sub_type || 'single',
+    session:      r.session || '',
+    deliveryZone: r.delivery_zone || '',
+    dietMenu:     safeJsonParse(r.diet_menu, []),
+    babiProduct:  safeJsonParse(r.babi_product, []),
+    items:        safeJsonParse(r.items, []),
+    status:       r.status || 'pending',
+    type:         r.type || '배송',
+    rawDate:      r.raw_date || '',
+    datetime:     (dt && !isNaN(dt)) ? dt : null,
+    _importId:    r.import_id || '',
+  };
+}
+
+function safeJsonParse(val, fallback) {
+  if (!val) return fallback;
+  if (Array.isArray(val)) return val;
+  try { return JSON.parse(val); } catch { return fallback; }
+}
+
+function saveOrdersToStorage() {
+  try {
+    const serialized = allOrders.map(o => {
+      // datetime: Date 객체면 ISO 문자열로, 문자열이면 그대로, 없으면 null
+      let dt = null;
+      if (o.datetime instanceof Date && !isNaN(o.datetime)) {
+        dt = o.datetime.toISOString();
+      } else if (typeof o.datetime === 'string' && o.datetime) {
+        dt = o.datetime;
+      }
+      return { ...o, datetime: dt };
+    });
+    localStorage.setItem(ORD_STORAGE_KEY, JSON.stringify(serialized));
+    localStorage.setItem(ORD_HISTORY_KEY, JSON.stringify(importHistory));
+  } catch(e) { console.warn('주문 저장 실패:', e); }
+}
+
+function loadOrdersFromStorage() {
+  // 로컬 캐시 먼저 렌더 (빠른 초기 표시)
+  try {
+    const raw  = localStorage.getItem(ORD_STORAGE_KEY);
+    const hist = localStorage.getItem(ORD_HISTORY_KEY);
+    if (hist) importHistory = JSON.parse(hist);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      allOrders = parsed.map(o => {
+        let dt = null;
+        if (o.datetime) { const d = new Date(o.datetime); dt = isNaN(d) ? null : d; }
+        return {
+          ...o, datetime: dt,
+          dietMenu:    Array.isArray(o.dietMenu)    ? o.dietMenu    : [],
+          babiProduct: Array.isArray(o.babiProduct) ? o.babiProduct : [],
+          items:       Array.isArray(o.items)       ? o.items       : [],
+          coolBag: o.coolBag||'', allergy: o.allergy||'', memo: o.memo||'',
+          deliveryZone: o.deliveryZone||'', status: o.status||'pending',
+          type: o.type||'배송', subType: o.subType||'single',
+        };
+      });
+      setSyncBadge('offline');
+    }
+  } catch(e) { console.warn('로컬 로드 실패:', e); allOrders = []; }
+  renderOrdersUI();
+  // 그 다음 DB에서 최신 데이터 pull
+  loadOrdersFromDB().then(ok => { if (ok) renderOrdersUI(); });
+}
+
+function renderOrdersUI() {
+  const hasData = allOrders.length > 0;
+  document.getElementById('ord-empty-state').style.display = hasData ? 'none' : 'block';
+  document.getElementById('ord-content').style.display    = hasData ? 'block' : 'none';
+  const badge = document.getElementById('ord-total-badge');
+  if (badge) badge.textContent = hasData ? `(총 ${allOrders.length}건)` : '';
+  renderImportHistory();
+  if (hasData) {
+    clearDateFilter(); // 전체 보기로 렌더
+  } else {
+    // 데이터 없을 때 잔여 UI 초기화
+    const grid = document.getElementById('ord-grid');
+    if (grid) grid.innerHTML = '';
+    const stats = document.getElementById('ord-stats');
+    if (stats) stats.innerHTML = '';
+    const dg = document.getElementById('ord-date-groups');
+    if (dg) dg.innerHTML = '';
+  }
+}
+
+function renderImportHistory() {
+  const el = document.getElementById('ord-import-history');
+  if (!el) return;
+  if (!importHistory.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rsm);padding:.75rem 1rem;margin-bottom:.5rem">
+    <div style="font-size:11px;color:var(--t3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">📁 임포트 이력</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+    ${importHistory.map(h=>`
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;display:flex;align-items:center;gap:6px">
+        <span style="color:var(--t2)">${h.filename}</span>
+        <span style="color:var(--accent);font-family:'DM Mono',monospace">${h.count}건</span>
+        <span style="color:var(--t3)">${h.date}</span>
+        <button onclick="removeImport('${h.id}')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:11px;padding:0;line-height:1" title="이 파일 데이터 제거">✕</button>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function removeImport(histId) {
+  if (!confirm('이 파일의 데이터를 목록에서 제거할까요?')) return;
+  importHistory = importHistory.filter(h => h.id !== histId);
+  allOrders = allOrders.filter(o => o._importId !== histId);
+  saveOrdersToStorage();
+  renderOrdersUI();
+  if (allOrders.length > 0) { filteredOrders = [...allOrders]; applyAllFilters(); }
+}
+
+// 임포트 모달
+function openImportModal() {
+  document.getElementById('import-modal').style.display = 'block';
+}
+function closeImportModal(e) {
+  if (e && e.target !== document.getElementById('import-modal')) return;
+  document.getElementById('import-modal').style.display = 'none';
+  // 파일 input 항상 리셋 (다음 업로드를 위해)
+  const fi = document.getElementById('ordFile');
+  if (fi) fi.value = '';
+}
+function doDropImport(e) {
+  e.preventDefault(); e.currentTarget.classList.remove('drag');
+  const f = e.dataTransfer.files[0]; if (f) parseOrderFile(f);
+}
+
+// 전체 초기화
+function confirmResetOrders() {
+  if (!confirm('⚠️ 모든 주문 데이터를 삭제합니다.\n이 작업은 되돌릴 수 없습니다.\n\n계속하시겠습니까?')) return;
+  allOrders = []; filteredOrders = []; importHistory = [];
+  localStorage.removeItem(ORD_STORAGE_KEY);
+  localStorage.removeItem(ORD_HISTORY_KEY);
+  currentImportFilename = '';
+  deleteAllOrdersFromDB();
+  // 파일 input 리셋
+  const fi = document.getElementById('ordFile');
+  if (fi) fi.value = '';
+  // UI 직접 리셋 (renderOrdersUI에 의존하지 않고 확실하게)
+  document.getElementById('ord-empty-state').style.display = 'block';
+  document.getElementById('ord-content').style.display = 'none';
+  const badge = document.getElementById('ord-total-badge');
+  if (badge) badge.textContent = '';
+  const grid = document.getElementById('ord-grid');
+  if (grid) grid.innerHTML = '';
+  const hist = document.getElementById('ord-import-history');
+  if (hist) { hist.style.display = 'none'; hist.innerHTML = ''; }
+  const stats = document.getElementById('ord-stats');
+  if (stats) stats.innerHTML = '';
+  const dg = document.getElementById('ord-date-groups');
+  if (dg) dg.innerHTML = '';
+}
+function resetOrders() { confirmResetOrders(); }
+
+// ============================================================
+// 편집 모달
+// ============================================================
+let currentEditOrdId = null;
+
+function openEditModal(id) {
+  const o = allOrders.find(x=>x.id===id);
+  if (!o) return;
+  currentEditOrdId = id;
+  // 모달 닫기
+  document.getElementById('ord-modal').style.display = 'none';
+
+  const addrClean = (o.addr||'').replace(/^\d{5}\s*/,'').trim();
+  const dietStr = (o.dietMenu||[]).join(', ');
+  const coolStr = Array.isArray(o.coolBag) ? o.coolBag.join(', ') : (o.coolBag||'');
+  const itemsStr = (o.items||[]).map(it=>it.menu+(it.qty>1?' x'+it.qty:'')).join('\n');
+
+  document.getElementById('edit-modal-content').innerHTML = `
+    <div style="display:grid;gap:.75rem">
+      ${editField('이름',     'edit-name',    o.name||'')}
+      ${editField('연락처',   'edit-phone',   o.phone||'')}
+      ${editField('주소',     'edit-addr',    addrClean, 'textarea')}
+      ${editField('현관 비번','edit-doorpwd', o.doorPwd||'')}
+      ${editField('배송지역', 'edit-zone',    o.deliveryZone||'')}
+      ${editField('🥘 유아식단 (쉼표 구분)', 'edit-diet', dietStr)}
+      ${editField('⚠️ 알레르기', 'edit-allergy', o.allergy||'')}
+      ${editField('🧊 보냉가방', 'edit-coolbag', coolStr)}
+      ${editField('🥬 바비야기 제품', 'edit-babiprod', (o.babiProduct||[]).join(', '))}
+      ${editField('💬 요청사항', 'edit-memo', o.memo||'', 'textarea')}
+      <div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:5px">주문 상품 (한 줄에 하나, "메뉴명 x수량")</div>
+        <textarea id="edit-items" rows="4" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;color:var(--text);font-size:13px;font-family:'Noto Sans KR',sans-serif;resize:vertical;outline:none">${itemsStr}</textarea>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="font-size:11px;color:var(--t3);white-space:nowrap">배송 상태</div>
+        <select id="edit-status" style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);padding:5px 8px;color:var(--text);font-size:13px;flex:1;outline:none">
+          <option value="pending" ${o.status==='pending'?'selected':''}>⏳ 준비중</option>
+          <option value="ready"   ${o.status==='ready'?'selected':''}>✅ 완료</option>
+        </select>
+      </div>
+    </div>`;
+  document.getElementById('edit-modal').style.display = 'block';
+}
+
+function editField(label, id, value, type='input') {
+  const style = 'width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;color:var(--text);font-size:13px;font-family:\'Noto Sans KR\',sans-serif;outline:none';
+  return `<div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:4px">${label}</div>
+    ${type==='textarea'
+      ? `<textarea id="${id}" rows="2" style="${style};resize:vertical">${value}</textarea>`
+      : `<input id="${id}" type="text" value="${value.replace(/"/g,'&quot;')}" style="${style}">`
+    }
+  </div>`;
+}
+
+function saveEditModal() {
+  const o = allOrders.find(x=>x.id===currentEditOrdId);
+  if (!o) return;
+
+  o.name    = document.getElementById('edit-name').value.trim();
+  o.phone   = document.getElementById('edit-phone').value.trim();
+  o.addr    = document.getElementById('edit-addr').value.trim();
+  o.doorPwd = document.getElementById('edit-doorpwd').value.trim();
+  o.deliveryZone = document.getElementById('edit-zone').value.trim();
+  o.dietMenu = document.getElementById('edit-diet').value.split(',').map(s=>s.trim()).filter(Boolean);
+  o.allergy  = document.getElementById('edit-allergy').value.trim();
+  o.coolBag  = document.getElementById('edit-coolbag').value.trim();
+  o.babiProduct = document.getElementById('edit-babiprod').value.split(',').map(s=>s.trim()).filter(Boolean);
+  o.memo    = document.getElementById('edit-memo').value.trim();
+  o.status  = document.getElementById('edit-status').value;
+
+  // 주문 상품 파싱
+  const itemLines = document.getElementById('edit-items').value.split('\n').map(l=>l.trim()).filter(Boolean);
+  o.items = itemLines.map(line => {
+    const m = line.match(/^(.+?)\s*[xX×]\s*(\d+)$/);
+    return m ? { menu: m[1].trim(), qty: parseInt(m[2]) } : { menu: line, qty: 1 };
+  });
+
+  saveOrdersToStorage();
+  updateOrderInDB(o);
+  closeEditModal();
+  applyAllFilters();
+  alert('✅ 수정 저장 완료');
+}
+
+function closeEditModal(e) {
+  if (e && e.target !== document.getElementById('edit-modal')) return;
+  document.getElementById('edit-modal').style.display = 'none';
+  currentEditOrdId = null;
+}
+
+function deleteOrder() {
+  const o = allOrders.find(x=>x.id===currentEditOrdId);
+  if (!o) return;
+  if (!confirm(`"${o.name}" 주문을 삭제하시겠습니까?`)) return;
+  allOrders = allOrders.filter(x=>x.id!==currentEditOrdId);
+  saveOrdersToStorage();
+  deleteOrderFromDB(currentEditOrdId);
+  closeEditModal();
+  renderOrdersUI();
+  if (allOrders.length > 0) applyAllFilters();
+}
+
+// ===================== 재고 관리 =====================
+
+function initStock() {
+  const saved = localStorage.getItem('babiyagi_stock');
+  if (saved) { try { stockItems = JSON.parse(saved); } catch(e) { stockItems = defaultStock(); } }
+  else stockItems = defaultStock();
+  renderStock();
+}
+
+function defaultStock() {
+  // ALL_MENUS에서 재료 추출해 초기 재고 생성
+  const ingSet = {};
+  ALL_MENUS.forEach(m => m.ingredients.forEach(i => {
+    if (!ingSet[i.name]) ingSet[i.name] = { name: i.name, unit: i.unit||'g', cat: guessCat(i.name) };
+  }));
+  return Object.values(ingSet).map((i,idx) => ({
+    id: 'S'+idx, name: i.name, cat: i.cat, unit: i.unit, stock: 0, minStock: 0
+  }));
+}
+
+function guessCat(name) {
+  if (/닭|돼지|한돈|목초육|한우|오리|이베리코|양고기|소세지|다짐육|불고기|삼겹|안심|등살|다리/.test(name)) return '육류';
+  if (/새우|바지락|굴|오징어|어묵|오뎅|참치|연어|명태|게살|매생이|바지/.test(name)) return '해산물';
+  if (/크림|버터|치즈|우유|요거트/.test(name)) return '유제품';
+  if (/간장|된장|생강|요리한끗|비책|양념|짜장|카레|커리|토마토퓨레|올리브유|들기름/.test(name)) return '소스/양념';
+  return '채소';
+}
+
+function saveStock() {
+  try {
+    localStorage.setItem('babiyagi_stock', JSON.stringify(stockItems));
+    alert('✅ 재고 저장 완료\n새로고침 후에도 데이터가 유지됩니다.');
+  } catch(e) {
+    alert('저장 실패: 브라우저 저장 공간을 확인해주세요.');
+  }
+}
+// 재고 수량 변경 시 자동 저장
+function autoSaveStock() {
+  try { localStorage.setItem('babiyagi_stock', JSON.stringify(stockItems)); } catch(e) {}
+}
+
+function filterStock(cat, btn) {
+  stockCatFilter = cat;
+  document.querySelectorAll('#stock-cat-filters .fbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderStock();
+}
+
+function renderStock() {
+  const list = stockCatFilter==='전체' ? stockItems : stockItems.filter(i=>i.cat===stockCatFilter);
+  const tbody = document.getElementById('stock-table');
+  if (!tbody) return;
+  tbody.innerHTML = list.map(item => {
+    const pct = item.minStock > 0 ? item.stock / item.minStock : 1;
+    const statusCls = item.stock === 0 ? 'stock-empty' : pct < 1 ? 'stock-low' : 'stock-ok';
+    const statusTxt = item.stock === 0 ? '❌ 없음' : pct < 1 ? '⚠️ 부족' : '✅ 충분';
+    return `<tr>
+      <td><strong>${item.name}</strong></td>
+      <td><span style="font-size:11px;color:var(--t3)">${item.cat}</span></td>
+      <td><input type="number" value="${item.stock}" min="0" style="width:70px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:3px 6px;color:var(--text);font-size:13px" onchange="updateStock('${item.id}','stock',this.value)"></td>
+      <td style="font-size:12px;color:var(--t3)">${item.unit}</td>
+      <td><input type="number" value="${item.minStock}" min="0" style="width:70px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:3px 6px;color:var(--text);font-size:13px" onchange="updateStock('${item.id}','minStock',this.value)"></td>
+      <td class="${statusCls}" style="font-size:12px;font-weight:500">${statusTxt}</td>
+      <td><button onclick="removeStock('${item.id}')" style="background:var(--rdim);border:1px solid var(--red);color:var(--red);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px">삭제</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function updateStock(id, field, val) {
+  const item = stockItems.find(i=>i.id===id);
+  if (item) { item[field] = parseFloat(val)||0; autoSaveStock(); }
+}
+
+function removeStock(id) {
+  stockItems = stockItems.filter(i=>i.id!==id);
+  renderStock();
+}
+
+function addStockItem() {
+  const name = prompt('식재료명:'); if (!name) return;
+  const cat  = prompt('카테고리 (육류/채소/해산물/유제품/소스/양념/기타):')||'기타';
+  const unit = prompt('단위 (g/ml/개):')||'g';
+  stockItems.push({ id:'S'+Date.now(), name, cat, unit, stock:0, minStock:0 });
+  renderStock();
+}
+
+// 메뉴 선택 기반 재고 필요량 표시
+function renderStockNeeded() {
+  if (!processedData || !stockItems.length) return;
+  const needed = document.getElementById('stock-needed');
+  const empty  = document.getElementById('stock-needed-empty');
+  const tbody  = document.getElementById('stock-needed-table');
+  if (!needed || !tbody) return;
+  needed.style.display = 'block';
+  empty.style.display  = 'none';
+  tbody.innerHTML = processedData.ings.filter(i=>i.total>0).map(ing => {
+    const si = stockItems.find(s=>s.name===ing.name);
+    const cur = si ? si.stock : null;
+    const ok  = cur === null ? '' : cur >= ing.total;
+    const statusHtml = cur===null
+      ? `<span style="color:var(--t3)">재고 미등록</span>`
+      : ok
+        ? `<span class="stock-ok">✅ 충분 (${cur}${ing.unit})</span>`
+        : `<span class="stock-empty">❌ 부족 (${cur}${ing.unit} / 필요 ${ing.total}${ing.unit})</span>`;
+    return `<tr>
+      <td>${ing.name}</td>
+      <td class="amt">${ing.total}${ing.unit}</td>
+      <td style="font-size:12px">${cur!==null?cur+ing.unit:'-'}</td>
+      <td>${statusHtml}</td>
+    </tr>`;
+  }).join('');
+}
+
+
+// ===================== 인쇄 =====================
+function printSingle(htmlContent, title) {
+  const w = window.open('', '_blank', 'width=800,height=600');
+  w.document.write(`<!DOCTYPE html><html lang="ko"><head>
+    <meta charset="UTF-8"><title>${title}</title>
+    <style>
+      body{font-family:'Noto Sans KR',sans-serif;margin:20px;color:#222;font-size:13px;line-height:1.6}
+      h2{font-size:16px;margin-bottom:12px;border-bottom:2px solid #e8a045;padding-bottom:6px;color:#1a1814;background:#e8a045;padding:8px 12px;border-radius:6px}
+      table{width:100%;border-collapse:collapse;margin-bottom:12px}
+      th{background:#f5f5f5;font-size:11px;padding:6px 8px;text-align:left;border-bottom:2px solid #ddd}
+      td{padding:6px 8px;border-bottom:1px solid #eee;font-size:12px}
+      .recipe-box{background:#f9f7f3;border-left:3px solid #e8a045;padding:10px 14px;border-radius:4px;white-space:pre-wrap;font-size:12px;line-height:1.7;margin-top:8px}
+      .badge{font-size:10px;padding:1px 6px;border-radius:10px;background:#e8a045;color:#fff;font-weight:600}
+      .ing-chip{font-size:11px;background:#eee;padding:1px 5px;border-radius:3px;margin:1px;display:inline-block}
+      @media print{body{margin:10px}}
+    </style></head><body>`);
+  w.document.write(htmlContent);
+  w.document.write('</body></html>');
+  w.document.close();
+  w.focus();
+  setTimeout(()=>{w.print();},400);
+}
+
+function printMenu(menuName) {
+  const m = ALL_MENUS.find(x=>x.menu===menuName);
+  if (!m) return;
+  const qty = selectedMenus.has(menuName) ? selectedMenus.get(menuName) : 1;
+  const ingsHtml = m.ingredients.map(i=>`<tr>
+    <td>${i.name}</td>
+    <td>${i.amount>0?i.amount+(i.unit||'g'):'적량'}</td>
+    <td>${i.amount>0?(i.amount*qty)+(i.unit||'g'):'적량'}</td>
+  </tr>`).join('');
+  const html = `
+    <h2>🍽️ ${m.menu} <span class="badge">${m.category}</span></h2>
+    <p style="font-size:11px;color:#888;margin-bottom:12px">인쇄일: ${new Date().toLocaleString('ko-KR')} · ${qty}인분 기준</p>
+    <table>
+      <thead><tr><th>재료</th><th>1인분</th><th>${qty}인분</th></tr></thead>
+      <tbody>${ingsHtml}</tbody>
+    </table>
+    ${m.recipe?`<div style="font-size:11px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">조리법</div><div class="recipe-box">${m.recipe}</div>`:''}
+  `;
+  printSingle(html, `${m.menu} - 바비야기`);
+}
+
+function printAllSelected() {
+  if (selectedMenus.size === 0) { alert('선택된 메뉴가 없습니다'); return; }
+  const chosen = ALL_MENUS.filter(m=>selectedMenus.has(m.menu));
+  let html = `<h2 style="font-size:18px">📋 바비야기 오늘의 메뉴 · ${new Date().toLocaleDateString('ko-KR')}</h2>`;
+  chosen.forEach(m => {
+    const qty = selectedMenus.get(m.menu)||1;
+    const ingsHtml = m.ingredients.map(i=>`<tr>
+      <td>${i.name}</td>
+      <td>${i.amount>0?i.amount+(i.unit||'g'):'적량'}</td>
+      <td>${i.amount>0?(i.amount*qty)+(i.unit||'g'):'적량'}</td>
+    </tr>`).join('');
+    html += `<div style="page-break-inside:avoid;margin-bottom:20px">
+      <h2>🍽️ ${m.menu} <span class="badge">${m.category}</span> ×${qty}</h2>
+      <table><thead><tr><th>재료</th><th>1인분</th><th>${qty}인분</th></tr></thead><tbody>${ingsHtml}</tbody></table>
+      ${m.recipe?`<div class="recipe-box">${m.recipe}</div>`:''}
+    </div>`;
+  });
+  printSingle(html, '바비야기 메뉴 전체 인쇄');
+}
+
+function printIngredients() {
+  if (!processedData) { alert('먼저 메뉴를 선택하고 공정을 생성해주세요'); return; }
+  const { ings } = processedData;
+  const rows = ings.map(i=>`<tr>
+    <td><strong>${i.name}</strong>${i.menus.length>1?'&nbsp;<span class="badge">통합</span>':''}</td>
+    <td>${i.total>0?i.total+(i.unit||'g'):'적량'}</td>
+    <td>${i.menus.join(', ')}</td>
+  </tr>`).join('');
+  const html = `
+    <h2>🛒 식재료 구매 목록 · ${new Date().toLocaleDateString('ko-KR')}</h2>
+    <table>
+      <thead><tr><th>식재료</th><th>총 필요량</th><th>사용 메뉴</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  printSingle(html, '식재료 목록 - 바비야기');
+}
+
+function printProcess() {
+  if (!processedData) { alert('먼저 메뉴를 선택하고 공정을 생성해주세요'); return; }
+  // 현재 보이는 공정 HTML 그대로 출력
+  const combined = document.getElementById('proc-combined').innerHTML;
+  const recipes  = document.getElementById('proc-recipes').innerHTML;
+  const html = `
+    <h2>⚡ 통합 조리 공정 · ${new Date().toLocaleDateString('ko-KR')}</h2>
+    <div style="margin-bottom:16px">${combined}</div>
+    <h2>📋 메뉴별 조리법</h2>
+    ${recipes}`;
+  printSingle(html, '조리 공정 - 바비야기');
+}
+
+function printOrder(ordId) {
+  const o = allOrders.find(x=>x.id===ordId);
+  if (!o) return;
+  const addrClean = (o.addr||'').replace(/^\d{5}\s*/,'').trim();
+  const itemsHtml = o.items.map(it=>`<tr><td>${it.menu}</td><td style="text-align:right">${it.qty||1}개</td></tr>`).join('');
+  const dt = o.datetime ? o.datetime.toLocaleDateString('ko-KR') : '';
+  const html = `
+    <h2>📦 주문서 · ${o.name||''}</h2>
+    <table>
+      <tr><td style="color:#888;width:90px">배송일</td><td><strong>${dt}</strong></td></tr>
+      <tr><td style="color:#888">이름</td><td>${o.name||'-'}</td></tr>
+      <tr><td style="color:#888">연락처</td><td>${o.phone||'-'}</td></tr>
+      <tr><td style="color:#888">배송유형</td><td>${o.type||'-'}</td></tr>
+      <tr><td style="color:#888">배송지역</td><td>${o.deliveryZone||'-'}</td></tr>
+      <tr><td style="color:#888">주소</td><td>${addrClean||'-'}${o.doorPwd?' (현관: '+o.doorPwd+')':''}</td></tr>
+      ${o.dietMenu&&o.dietMenu.length?`<tr><td style="color:#888">🥘 유아식단</td><td>${o.dietMenu.join(' · ')}</td></tr>`:''}
+      ${o.allergy&&o.allergy!=='해당없음'?`<tr><td style="color:#c00">⚠️ 알레르기</td><td style="color:#c00"><strong>${o.allergy}</strong></td></tr>`:''}
+      ${o.coolBag?`<tr><td style="color:#888">🧊 보냉가방</td><td>${Array.isArray(o.coolBag)?o.coolBag.join(', '):o.coolBag}</td></tr>`:''}
+      ${o.babiProduct&&o.babiProduct.length?`<tr><td style="color:#888">🥬 바비야기제품</td><td>${o.babiProduct.join(', ')}</td></tr>`:''}
+      ${o.extraMenu?`<tr><td style="color:#888">➕ 추가메뉴</td><td>${o.extraMenu}</td></tr>`:''}
+      ${o.memo?`<tr><td style="color:#888">💬 요청사항</td><td>${o.memo}</td></tr>`:''}
+    </table>
+    <h2 style="margin-top:12px">주문 상품</h2>
+    <table>
+      <thead><tr><th>메뉴</th><th style="text-align:right">수량</th></tr></thead>
+      <tbody>${itemsHtml}</tbody>
+      <tfoot><tr><td><strong>합계</strong></td><td style="text-align:right"><strong>${o.items.reduce((s,i)=>s+(i.qty||1),0)}개</strong></td></tr></tfoot>
+    </table>
+    ${o.amount?`<p style="text-align:right;font-size:14px"><strong>결제금액: ${Number(String(o.amount).replace(/[^0-9]/g,'')||0).toLocaleString()}원</strong></p>`:''}
+  `;
+  printSingle(html, `주문서 - ${o.name} - 바비야기`);
+}
+
+function printAllOrders() {
+  const list = filteredOrders.length > 0 ? filteredOrders : allOrders;
+  if (!list.length) { alert('출력할 주문이 없습니다'); return; }
+  let html = `<h2>📦 전체 주문 목록 · ${new Date().toLocaleDateString('ko-KR')} (${list.length}건)</h2>
+  <table>
+    <thead><tr><th>이름</th><th>유형</th><th>메뉴</th><th>배송</th><th>알레르기</th><th>상태</th></tr></thead>
+    <tbody>`;
+  list.forEach(o=>{
+    const menuStr = o.items.map(i=>i.menu+(i.qty>1?'×'+i.qty:'')).join(', ');
+    html+=`<tr>
+      <td><strong>${o.name||'-'}</strong><br><span style="font-size:10px;color:#888">${o.phone||''}</span></td>
+      <td>${o.type}<br><span style="font-size:10px;color:#888">${{sub5:'정기5회',sub8:'정기8회',sub12:'정기12회',single:'단품'}[o.subType]||''}</span></td>
+      <td style="font-size:11px">${menuStr}</td>
+      <td style="font-size:11px">${(o.addr||'').replace(/^\d{5}\s*/,'').substring(0,20)||'-'}${o.doorPwd?'<br>🔑'+o.doorPwd:''}</td>
+      <td style="color:#c00;font-size:11px">${o.allergy||''}</td>
+      <td>${o.status==='ready'?'✅완료':'⏳준비중'}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  printSingle(html, '전체 주문 - 바비야기');
+}
+
+</script>
+</body>
+</html>

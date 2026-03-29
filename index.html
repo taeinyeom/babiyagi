@@ -10,8 +10,8 @@
 // =====================================================
 // ⚙️  Supabase 설정 - 본인 값으로 교체하세요
 // =====================================================
-const SUPABASE_URL  = 'https://sgoquworukbiotprqbxn.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNnb3F1d29ydWtiaW90cHJxYnhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3Mjc4NzQsImV4cCI6MjA5MDMwMzg3NH0.zP0TuXUos7vb4UnJry28RlyVQoyHkkyNHsrbJTl9y14';
+const SUPABASE_URL  = 'https://YOUR_PROJECT_ID.supabase.co';
+const SUPABASE_ANON = 'YOUR_ANON_KEY';
 // =====================================================
 const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 </script>
@@ -405,7 +405,12 @@ let processedData = null;
 let currentCat = '전체';
 let searchQ = '';
 
-let allOrders = [];        // 런타임 주문 목록
+let ordTabFilter      = 'all'; // all | sub5 | sub8 | sub12 | single
+let ordStatusFilter   = 'all'; // all | pending | ready | 배송 | 픽업
+let currentModalOrdId = null;
+let currentEditOrdId  = null;
+let currentImportFilename = '';
+let allOrders = [];            // 런타임 주문 목록
 let filteredOrders = [];   // 현재 필터 결과
 let ordTypeFilter = 'all'; // 탭 필터
 let importHistory = [];    // [{id, filename, date, count}]
@@ -735,9 +740,6 @@ function loadSelection() {
 
 
 // ===================== 주문 관리 =====================
-let ordTabFilter = 'all';   // all | sub5 | sub8 | sub12 | single
-let ordStatusFilter = 'all'; // all | pending | ready | 배송 | 픽업
-let currentModalOrdId = null;
 
 function doDrag(e,el){e.preventDefault();el.classList.add('drag')}
 function doDragLeave(e,el){el.classList.remove('drag')}
@@ -755,7 +757,6 @@ function splitCSVLine(line, s) {
   result.push(cur.trim()); return result;
 }
 
-let currentImportFilename = '';
 function parseOrderFile(file) {
   currentImportFilename = file.name;
   const ext = file.name.split('.').pop().toLowerCase();
@@ -1576,7 +1577,6 @@ function resetOrders() { confirmResetOrders(); }
 // ============================================================
 // 편집 모달
 // ============================================================
-let currentEditOrdId = null;
 
 function openEditModal(id) {
   const o = allOrders.find(x=>x.id===id);

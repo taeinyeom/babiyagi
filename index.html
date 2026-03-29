@@ -24,7 +24,11 @@ const LOCAL_ACCOUNTS = {
 };
 
 // 세션 체크 후 로그인 화면 표시 여부 결정
+const IS_LOCAL = ['localhost','127.0.0.1',''].includes(location.hostname);
+
 async function checkAuthOnLoad() {
+  // 로컬 환경이면 로그인 스킵
+  if (IS_LOCAL) { hideLoginScreen(); return; }
   // 로컬 세션 먼저 확인 (빠른 응답)
   const localUser = sessionStorage.getItem('babiyagi_user');
   if (localUser) {
@@ -54,6 +58,9 @@ function hideLoginScreen() {
 }
 
 async function doLogin() {
+  // 로컬 환경이면 바로 통과
+  if (IS_LOCAL) { hideLoginScreen(); return; }
+
   const id  = document.getElementById('login-id').value.trim();
   const pw  = document.getElementById('login-pw').value;
   const btn = document.getElementById('login-btn');
@@ -1927,6 +1934,10 @@ async function doLogout() {
 // ===================== 인쇄 =====================
 function printSingle(htmlContent, title) {
   const w = window.open('', '_blank', 'width=800,height=600');
+  if (!w) {
+    alert('팝업이 차단되었습니다.\n브라우저 주소창 오른쪽의 팝업 차단 아이콘을 클릭해 허용해주세요.');
+    return;
+  }
   w.document.write(`<!DOCTYPE html><html lang="ko"><head>
     <meta charset="UTF-8"><title>${title}</title>
     <style>
@@ -2005,14 +2016,22 @@ function printAllSelected() {
 
 function printIngredients() {
   if (!processedData) { alert('먼저 메뉴를 선택하고 공정을 생성해주세요'); return; }
-  const { ings } = processedData;
-  const rows = ings.map(i=>`<tr>
-    <td><strong>${i.name}</strong>${i.menus.length>1?'&nbsp;<span class="badge">통합</span>':''}</td>
+  const { ings, combined, singles, noAmt } = processedData;
+  // 현재 활성화된 필터 버튼 텍스트 읽기
+  const activeBtn = document.querySelector('#ing-filters .fbtn.on');
+  const activeFilter = activeBtn ? activeBtn.textContent.trim() : '전체';
+  const list = activeFilter==='전체' ? ings
+             : activeFilter==='공통재료' ? combined
+             : activeFilter==='단독재료' ? singles
+             : noAmt;
+  const filterLabel = activeFilter !== '전체' ? ` (${activeFilter})` : '';
+  const rows = list.map(i=>`<tr>
+    <td><strong>${i.name}</strong>${i.menus.length>1&&i.total>0?'&nbsp;<span class="badge">통합</span>':''}</td>
     <td>${i.total>0?i.total+(i.unit||'g'):'적량'}</td>
     <td>${i.menus.join(', ')}</td>
   </tr>`).join('');
   const html = `
-    <h2>🛒 식재료 구매 목록 · ${new Date().toLocaleDateString('ko-KR')}</h2>
+    <h2>🛒 식재료 구매 목록${filterLabel} · ${new Date().toLocaleDateString('ko-KR')}</h2>
     <table>
       <thead><tr><th>식재료</th><th>총 필요량</th><th>사용 메뉴</th></tr></thead>
       <tbody>${rows}</tbody>

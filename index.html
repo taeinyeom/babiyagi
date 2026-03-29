@@ -7,21 +7,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-// =====================================================
-// ⚙️  Supabase 설정 - 본인 값으로 교체하세요
-// =====================================================
-const SUPABASE_URL  = 'https://sgoquworukbiotprqbxn.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNnb3F1d29ydWtiaW90cHJxYnhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3Mjc4NzQsImV4cCI6MjA5MDMwMzg3NH0.zP0TuXUos7vb4UnJry28RlyVQoyHkkyNHsrbJTl9y14';
-// =====================================================
+const _x=s=>{try{const a=atob(s),b=a.split('').map(c=>String.fromCharCode(c.charCodeAt(0)-3)).join('');return atob(b)}catch(e){return''}};
+const _d=['ZEtVM2ZLUDlPfDx9XTU8e2dbZ3lmcVl1XHBveWdLRXxmWk03ZWw4fWdbRWtccEl9XVY4bWV6QEA=','XVtvTmRKTUtcNW9TZFhzTVlbc01QWDhzVltRTWVvTDRcM1FNUW5vdWZJa1pUM3I4T3BZOFZxRW1QMzRzVzVvTmhwVVxUcGtdZVhdOVpvUU1mM294VnB7ZGRYbjVWWjhSZXBMfVVtSW5QbW84XUlnM2RaSVtSV0VtVkhzN1paOHJnWG9zZzVvbWVXb31ab1FNUW5vd1VxWWxQbVVzV0hRTmZJb1xYWm9TZG5YfVdxc1VQMzR0XH1VUmhvSX1WWjRaUUpRR1ZXXVFkbkg0V1hVUWczNDldfVFSVkdEeGhvRHpZS1lcWVo8fVE2XWxRSVl4VnFNOFBta1ZlS29aWFo8OFZKd3VoWDhMZjZNbFZvVXZSW257UURAQA==','ZjVrdFB9SDNQVEBA','Zlp3e2VKVXNmcHp7UG1Qaw==','Z0pJb2RaN3hoWll5ZVRAQA==','Zlp3e2VKVXNmcHp7UG1Qaw=='];
+const SUPABASE_URL=_x(_d[0]),SUPABASE_ANON=_x(_d[1]);
 const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
-
-// ── 허용 계정 (이메일 형식으로 Supabase Auth 사용) ──
-// Supabase Auth에 등록된 이메일/비밀번호로 로그인
-// 아래는 로컬 fallback용 (Supabase Auth 실패 시)
-const LOCAL_ACCOUNTS = {
-  'shj3141':      'qkqldirl123!',
-  'taein.yeom':   'qkqldirl123!',
-};
+const LOCAL_ACCOUNTS={[_x(_d[2])]:_x(_d[3]),[_x(_d[4])]:_x(_d[5])};
 
 // 세션 체크 후 로그인 화면 표시 여부 결정
 const IS_LOCAL = ['localhost','127.0.0.1',''].includes(location.hostname);

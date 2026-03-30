@@ -960,6 +960,7 @@ function buildOrders(rows) {
         type:       parsed.delivery ? '배송' : detectType(r, prodRaw),
         deliveryZone: parsed.delivery || '',
         dietMenu:   parsed.dietMenu || [],
+        subConfig:  parsed.subConfig || [],
         babiProduct: parsed.babiProduct || [],
         status:     'pending',
         items:      parsed.dietMenu && parsed.dietMenu.length ? parsed.dietMenu.map(d=>({menu:d,qty:1})) : []
@@ -1067,6 +1068,7 @@ function parseBabiyagiProduct(raw) {
     totalCount:   0,      // 정기 총 횟수 (5/8/12)
     currentSession: 0,    // 현재 회차 (파싱 시점)
     dietMenu:     [],
+    subConfig:    [],     // 정기배송 구성 선택 (냠냠, 일품 등)
     allergy:      '',
     delivery:     '',
     coolBag:      [],
@@ -1120,7 +1122,10 @@ function parseBabiyagiProduct(raw) {
       .replace(/\(\d+개?\)/g,'')
       .trim();
     const parts = configRaw.split(/[+\s]+/).map(p => p.trim()).filter(p => p.length > 1);
-    if (parts.length > 0 && result.dietMenu.length === 0) result.dietMenu = parts;
+    if (parts.length > 0) {
+      result.subConfig = parts; // 정기 구성은 별도 저장
+      if (result.dietMenu.length === 0) result.dietMenu = parts;
+    }
   }
 
   // 2c) 총 회차 수 파싱 (정기배송): "총12회차", "총8회차", "5회차"
@@ -1468,10 +1473,16 @@ function renderOrdGrid(orders) {
           <button class="print-btn" onclick="event.stopPropagation();printOrder('${safeId}')">🖨️</button>
         </div>
       </div>
-      ${addrClean?`<div style="font-size:11px;color:var(--t3);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📍 ${addrClean}${o.doorPwd?' 🔑'+o.doorPwd:''}</div>`:''}
       ${o.deliveryZone?`<div style="font-size:11px;color:var(--blue);margin-bottom:4px">🚏 ${o.deliveryZone}</div>`:''}
-      ${o.dietMenu&&o.dietMenu.length?`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px">${o.dietMenu.map(d=>`<span style="font-size:11px;background:var(--adim2);color:var(--accent);padding:1px 7px;border-radius:10px">${d}</span>`).join('')}</div>`:''}
-      ${alerts.length?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px">${alerts.map(a=>`<span style="font-size:11px;background:var(--adim);color:var(--accent);padding:1px 6px;border-radius:4px">${a}</span>`).join('')}</div>`:''}
+      ${(()=>{
+        const configItems = o.subType!=='single' ? (o.subConfig&&o.subConfig.length ? o.subConfig : (o.dietMenu&&o.dietMenu.length ? o.dietMenu : [])) : (o.dietMenu&&o.dietMenu.length ? o.dietMenu : []);
+        if (!configItems.length) return '';
+        const label = o.subType!=='single' ? '<div style="font-size:10px;color:var(--t3);margin-bottom:2px;letter-spacing:.3px">구성</div>' : '';
+        const chips = configItems.map(d=>`<span style="font-size:11px;background:var(--adim2);color:var(--accent);padding:1px 7px;border-radius:10px">${d}</span>`).join('');
+        return `<div style="margin-bottom:4px">${label}<div style="display:flex;gap:3px;flex-wrap:wrap">${chips}</div></div>`;
+      })()}
+      ${o.allergy&&o.allergy!=='해당없음'?`<div style="font-size:11px;background:var(--rdim);color:var(--red);padding:2px 7px;border-radius:4px;display:inline-block;margin-bottom:4px">⚠️ 알레르기 ${o.allergy}</div>`:''}
+      ${alerts.filter(a=>!a.startsWith('⚠️')).length?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px">${alerts.filter(a=>!a.startsWith('⚠️')).map(a=>`<span style="font-size:11px;background:var(--adim);color:var(--accent);padding:1px 6px;border-radius:4px">${a}</span>`).join('')}</div>`:''}
       ${o.babiProduct&&o.babiProduct.length?`<div style="font-size:11px;color:var(--green);margin-bottom:4px">🥬 ${o.babiProduct.join(', ')}</div>`:''}
       ${o.memo?`<div style="font-size:11px;color:var(--t2);background:var(--bg2);border-radius:4px;padding:3px 7px;margin-bottom:4px;border-left:2px solid var(--border2)">💬 ${o.memo.substring(0,60)}${o.memo.length>60?'…':''}</div>`:''}
       <div style="border-top:1px solid var(--border);padding-top:6px">
@@ -1512,8 +1523,10 @@ function openOrdModal(id) {
     ['주소', addrClean||'-'],
     o.deliveryZone ? ['🚏 배송지역', `<span style="color:var(--blue)">${o.deliveryZone}</span>`] : null,
     o.doorPwd ? ['현관 비번', `<strong style="color:var(--accent);font-family:'DM Mono',monospace">${o.doorPwd}</strong>`] : null,
-    o.dietMenu&&o.dietMenu.length ? ['🥘 유아식단', `<div style="display:flex;gap:4px;flex-wrap:wrap">${o.dietMenu.map(d=>`<span style="font-size:12px;background:var(--adim2);color:var(--accent);padding:2px 8px;border-radius:10px">${d}</span>`).join('')}</div>`] : null,
-    o.allergy ? ['⚠️ 알레르기', `<strong style="color:var(--red)">${o.allergy}</strong>`] : null,
+    o.subType!=='single'&&(o.subConfig&&o.subConfig.length||o.dietMenu&&o.dietMenu.length)
+      ? ['🍱 정기구성', `<div style="display:flex;gap:4px;flex-wrap:wrap">${(o.subConfig&&o.subConfig.length?o.subConfig:o.dietMenu).map(d=>`<span style="font-size:12px;background:var(--adim2);color:var(--accent);padding:2px 8px;border-radius:10px">${d}</span>`).join('')}</div>`]
+      : o.dietMenu&&o.dietMenu.length ? ['🥘 유아식단', `<div style="display:flex;gap:4px;flex-wrap:wrap">${o.dietMenu.map(d=>`<span style="font-size:12px;background:var(--adim2);color:var(--accent);padding:2px 8px;border-radius:10px">${d}</span>`).join('')}</div>`] : null,
+    o.allergy&&o.allergy!=='해당없음' ? ['⚠️ 알레르기', `<strong style="color:var(--red)">${o.allergy}</strong>`] : null,
     o.coolBag ? ['🧊 보냉가방', o.coolBag] : null,
     o.babiProduct&&o.babiProduct.length ? ['🥬 바비야기제품', o.babiProduct.join(', ')] : null,
     o.extraMenu ? ['➕ 추가메뉴', o.extraMenu] : null,
@@ -1668,6 +1681,7 @@ function orderToDbRow(o) {
     session:       o.session || '',
     delivery_zone: o.deliveryZone || '',
     diet_menu:     JSON.stringify(o.dietMenu || []),
+    sub_config:    JSON.stringify(o.subConfig || []),
     babi_product:  JSON.stringify(o.babiProduct || []),
     items:         JSON.stringify(o.items || []),
     status:        o.status || 'pending',
@@ -1696,6 +1710,7 @@ function dbRowToOrder(r) {
     session:      r.session || '',
     deliveryZone: r.delivery_zone || '',
     dietMenu:     safeJsonParse(r.diet_menu, []),
+    subConfig:    safeJsonParse(r.sub_config, []),
     babiProduct:  safeJsonParse(r.babi_product, []),
     items:        safeJsonParse(r.items, []),
     status:       r.status || 'pending',
@@ -1743,6 +1758,7 @@ function loadOrdersFromStorage() {
         return {
           ...o, datetime: dt,
           dietMenu:    Array.isArray(o.dietMenu)    ? o.dietMenu    : [],
+          subConfig:   Array.isArray(o.subConfig)   ? o.subConfig   : [],
           babiProduct: Array.isArray(o.babiProduct) ? o.babiProduct : [],
           items:       Array.isArray(o.items)       ? o.items       : [],
           coolBag: o.coolBag||'', allergy: o.allergy||'', memo: o.memo||'',

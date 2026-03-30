@@ -1998,8 +1998,9 @@ function openAddCustomerModal() {
         </div>
       </div>
       <div>
-        <div style="font-size:11px;color:var(--t3);margin-bottom:4px">배송일</div>
-        <input id="ac-date" type="date" value="${ymd}" style="${inputStyle}">
+        <div style="font-size:11px;color:var(--t3);margin-bottom:4px" id="ac-date-label">배송일</div>
+        <input id="ac-date" type="date" value="${ymd}" style="${inputStyle}" onchange="acCheckStartDay()">
+        <div id="ac-date-hint" style="font-size:11px;margin-top:4px;display:none"></div>
       </div>
       <div>
         <div style="font-size:11px;color:var(--t3);margin-bottom:4px">주소</div>
@@ -2049,22 +2050,55 @@ function acToggleSubFields() {
   const st = document.getElementById('ac-subtype');
   const sf = document.getElementById('ac-sub-fields');
   if (!st || !sf) return;
-  sf.style.display = st.value !== 'single' ? 'grid' : 'none';
+  const isSub = st.value !== 'single';
+  sf.style.display = isSub ? 'grid' : 'none';
+  const lbl = document.getElementById('ac-date-label');
+  if (lbl) lbl.textContent = isSub ? '첫 배송일 (화요일 또는 금요일)' : '배송일';
+  acCheckStartDay();
+}
+
+function acCheckStartDay() {
+  const hint = document.getElementById('ac-date-hint');
+  const st   = document.getElementById('ac-subtype');
+  const dv   = document.getElementById('ac-date');
+  if (!hint || !st || !dv) return;
+  if (st.value === 'single' || !dv.value) { hint.style.display='none'; return; }
+  const d = new Date(dv.value + 'T00:00:00');
+  const day = d.getDay();
+  const days = ['일','월','화','수','목','금','토'];
+  if (day === 2) {
+    hint.style.display = 'block';
+    hint.style.color = 'var(--green)';
+    hint.textContent = '✅ 화요일 시작 → 화→금→화→금 순으로 자동 생성됩니다';
+  } else if (day === 5) {
+    hint.style.display = 'block';
+    hint.style.color = 'var(--green)';
+    hint.textContent = '✅ 금요일 시작 → 금→화→금→화 순으로 자동 생성됩니다';
+  } else {
+    hint.style.display = 'block';
+    hint.style.color = 'var(--accent)';
+    hint.textContent = `⚠️ ${days[day]}요일입니다. 화/금 날짜를 선택해야 회차가 자동 생성됩니다`;
+  }
 }
 
 function saveAddCustomer() {
   const name = (document.getElementById('ac-name').value||'').trim();
   if (!name) { alert('이름을 입력해주세요'); document.getElementById('ac-name').focus(); return; }
 
-  const subType  = document.getElementById('ac-subtype').value;
-  const dateVal  = document.getElementById('ac-date').value;
-  const dietRaw  = (document.getElementById('ac-diet').value||'').trim();
-  const menus    = dietRaw ? dietRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
-  const allergy  = (document.getElementById('ac-allergy').value||'').trim();
-  const type     = document.getElementById('ac-type').value;
+  const subType    = document.getElementById('ac-subtype').value;
+  const dateVal    = document.getElementById('ac-date').value;
+  const dietRaw    = (document.getElementById('ac-diet').value||'').trim();
+  const menus      = dietRaw ? dietRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  const allergy    = (document.getElementById('ac-allergy').value||'').trim();
+  const type       = document.getElementById('ac-type').value;
+  const weekdays   = subType!=='single' ? (document.getElementById('ac-weekdays').value||'화/금') : '';
+  const sessionIn  = subType!=='single' ? (document.getElementById('ac-session').value||'').trim() : '';
+  const totalCount = subType==='sub12'?12 : subType==='sub8'?8 : subType==='sub5'?5 : 0;
+  const startDate  = dateVal ? new Date(dateVal+'T00:00:00') : new Date();
+  const baseId     = 'MAN-' + Date.now();
 
-  const newOrder = {
-    id:           'MAN-' + Date.now(),
+  const baseOrder = {
+    id:           baseId,
     rawDate:      dateVal,
     name,
     phone:        (document.getElementById('ac-phone').value||'').trim(),
@@ -2076,11 +2110,11 @@ function saveAddCustomer() {
     extraMenu:    '',
     memo:         (document.getElementById('ac-memo').value||'').trim(),
     subType,
-    totalCount:   subType==='sub12'?12 : subType==='sub8'?8 : subType==='sub5'?5 : 0,
-    weekdays:     subType!=='single' ? (document.getElementById('ac-weekdays').value||'') : '',
-    session:      subType!=='single' ? (document.getElementById('ac-session').value||'').trim() : '',
-    datetime:     dateVal ? new Date(dateVal) : new Date(),
-    orderDate:    dateVal ? new Date(dateVal) : new Date(),
+    totalCount,
+    weekdays,
+    session:      sessionIn || (subType!=='single' ? '1/'+totalCount+'회차' : ''),
+    datetime:     startDate,
+    orderDate:    startDate,
     type,
     deliveryZone: (document.getElementById('ac-zone').value||'').trim(),
     dietMenu:     menus,
@@ -2091,17 +2125,58 @@ function saveAddCustomer() {
     _importId:    'manual',
   };
 
-  allOrders.push(newOrder);
+  // ── 정기배송: 화/금 전체 회차 자동 생성 ──
+  const ordersToAdd = [];
+  if (subType !== 'single' && totalCount > 0) {
+    const startDay = startDate.getDay();
+    const isTue = startDay === 2;
+    const isFri = startDay === 5;
+
+    if (isTue || isFri) {
+      // 화/금 시작 → 회차별 날짜 자동 생성
+      for (let i = 0; i < totalCount; i++) {
+        const d = new Date(startDate);
+        const weekOffset = Math.floor(i / 2) * 7;
+        const dayOffset  = i % 2 === 0 ? 0 : (isTue ? 3 : 4);
+        d.setDate(startDate.getDate() + weekOffset + dayOffset);
+        const sessionLabel = (i + 1) + '/' + totalCount + '회차';
+        if (i === 0) {
+          baseOrder.datetime = d;
+          baseOrder.session  = sessionLabel;
+          ordersToAdd.push(baseOrder);
+        } else {
+          ordersToAdd.push(Object.assign({}, baseOrder, {
+            id:       baseId + '_s' + (i + 1),
+            datetime: d,
+            session:  sessionLabel,
+            _parentId: baseId,
+          }));
+        }
+      }
+    } else {
+      // 화/금 시작이 아닌 경우: 1개만 추가
+      ordersToAdd.push(baseOrder);
+    }
+  } else {
+    ordersToAdd.push(baseOrder);
+  }
+
+  // 중복 제거 후 추가
+  const existingIds = new Set(allOrders.map(o => o.id));
+  const toAdd = ordersToAdd.filter(o => !existingIds.has(o.id));
+  allOrders.push(...toAdd);
+
   saveOrdersToStorage();
-  // DB에도 저장
-  insertOrdersToDB([newOrder], 'imp_manual_'+Date.now(), '직접입력').then(ok => {
+  const importId = 'imp_manual_' + Date.now();
+  insertOrdersToDB(toAdd, importId, '직접입력').then(ok => {
     if (ok) setSyncBadge('ok');
   });
 
   closeAddCustomerModal();
   renderOrdersUI();
   applyAllFilters();
-  alert(`✅ "${name}" 고객이 추가되었습니다`);
+  const sessionInfo = subType!=='single' ? ` (총 ${toAdd.length}회차 생성)` : '';
+  alert(`✅ "${name}" 고객이 추가되었습니다${sessionInfo}`);
 }
 
 function closeAddCustomerModal(e) {

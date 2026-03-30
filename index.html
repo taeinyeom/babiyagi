@@ -357,6 +357,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
       <span id="sync-badge" style="font-size:10px;padding:1px 7px;border-radius:8px;margin-left:6px;font-weight:500"></span>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-sm btn-a" onclick="openAddCustomerModal()">+ 고객 추가</button>
       <button class="btn btn-sm" onclick="openImportModal()">+ 엑셀 추가</button>
       <button class="btn btn-sm" onclick="printAllOrders()">🖨️ 인쇄</button>
       <button class="btn btn-sm" style="color:var(--red);border-color:var(--red)" onclick="confirmResetOrders()">🗑️ 전체 초기화</button>
@@ -432,6 +433,20 @@ tr:hover td{background:rgba(255,255,255,0.015)}
     </div>
     <div style="margin-top:1rem;text-align:center">
       <span class="sample-link" onclick="loadSampleOrders(event);closeImportModal()">샘플 주문으로 테스트하기</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- 고객 추가 모달 -->
+<div id="add-customer-modal" style="display:none;position:fixed;inset:0;z-index:1001;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);overflow-y:auto" onclick="closeAddCustomerModal(event)">
+  <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:16px;max-width:520px;margin:2rem auto;padding:1.5rem;position:relative" onclick="event.stopPropagation()">
+    <button onclick="closeAddCustomerModal()" style="position:absolute;top:1rem;right:1rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t2);cursor:pointer;padding:4px 10px;font-size:13px">✕</button>
+    <div style="font-size:16px;font-weight:700;margin-bottom:1.25rem">👤 고객 직접 추가</div>
+    <div id="add-customer-content"></div>
+    <div style="display:flex;gap:8px;margin-top:1.25rem">
+      <button onclick="saveAddCustomer()" class="btn btn-a" style="flex:1;justify-content:center">✅ 추가</button>
+      <button onclick="closeAddCustomerModal()" class="btn" style="padding:7px 18px">취소</button>
     </div>
   </div>
 </div>
@@ -1050,8 +1065,11 @@ function buildOrders(rows) {
   saveOrdersToStorage();
   closeImportModal();
   renderOrdersUI();
-  // DB에 비동기 저장
-  insertOrdersToDB(toAdd, importId, fname).then(() => renderImportHistory());
+  // DB에 비동기 저장 (완료 후 history 갱신만, allOrders 재로드 없음)
+  insertOrdersToDB(toAdd, importId, fname).then(ok => {
+    renderImportHistory();
+    if (ok) setSyncBadge('ok');
+  });
   const msg = skipped > 0
     ? `✅ ${toAdd.length}건 추가됨 (중복 ${skipped}건 제외, 전체 ${allOrders.length}건)`
     : `✅ ${toAdd.length}건 추가됨 (전체 ${allOrders.length}건)`;
@@ -1651,7 +1669,11 @@ async function loadOrdersFromDB() {
     if (error) throw error;
     const { data: hist } = await _sb.from('import_history').select('*').order('imported_at', { ascending: false });
 
-    allOrders = (data || []).map(dbRowToOrder);
+    const dbOrders = (data || []).map(dbRowToOrder);
+    // 로컬에만 있는 주문(DB에 아직 반영 안 된 것) 보존
+    const dbIds = new Set(dbOrders.map(o => o.id));
+    const localOnly = allOrders.filter(o => !dbIds.has(o.id));
+    allOrders = [...dbOrders, ...localOnly];
     importHistory = (hist || []).map(h => ({
       id: h.id, filename: h.filename, count: h.count,
       date: new Date(h.imported_at).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})
@@ -1919,6 +1941,173 @@ function confirmResetOrders() {
   if (dg) dg.innerHTML = '';
 }
 function resetOrders() { confirmResetOrders(); }
+
+
+// ============================================================
+// 고객 직접 추가
+// ============================================================
+
+function openAddCustomerModal() {
+  const today = new Date();
+  const ymd = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  const inputStyle = "width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);padding:7px 10px;color:var(--text);font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none";
+  const selStyle   = inputStyle + ";cursor:pointer";
+
+  document.getElementById('add-customer-content').innerHTML = `
+    <div style="display:grid;gap:.75rem">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+        <div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:4px">이름 *</div>
+          <input id="ac-name" type="text" placeholder="홍길동" style="${inputStyle}">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:4px">연락처</div>
+          <input id="ac-phone" type="tel" placeholder="010-0000-0000" style="${inputStyle}">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+        <div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:4px">배송 유형</div>
+          <select id="ac-type" style="${selStyle}">
+            <option value="배송">🚚 배송</option>
+            <option value="픽업">🏪 픽업</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:4px">구독 유형</div>
+          <select id="ac-subtype" style="${selStyle}" onchange="acToggleSubFields()">
+            <option value="single">📦 단품</option>
+            <option value="sub5">🔄 정기 5회</option>
+            <option value="sub8">🔄 정기 8회</option>
+            <option value="sub12">🔄 정기 12회</option>
+          </select>
+        </div>
+      </div>
+      <div id="ac-sub-fields" style="display:none;display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+        <div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:4px">배송 요일</div>
+          <select id="ac-weekdays" style="${selStyle}">
+            <option value="화/금">화/금</option>
+            <option value="화">화요일만</option>
+            <option value="금">금요일만</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:4px">회차 (예: 1/8회차)</div>
+          <input id="ac-session" type="text" placeholder="1/8회차" style="${inputStyle}">
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:4px">배송일</div>
+        <input id="ac-date" type="date" value="${ymd}" style="${inputStyle}">
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:4px">주소</div>
+        <input id="ac-addr" type="text" placeholder="수원시 영통구..." style="${inputStyle}">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+        <div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:4px">현관 비번</div>
+          <input id="ac-doorpwd" type="text" placeholder="1234#" style="${inputStyle}">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:4px">배송지역</div>
+          <input id="ac-zone" type="text" placeholder="인계/지동..." style="${inputStyle}">
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:4px">🥘 구성 메뉴 <span style="color:var(--t3);font-weight:400">(쉼표로 구분)</span></div>
+        <input id="ac-diet" type="text" placeholder="냠냠, 일품, 덮밥소스, 영양밥" style="${inputStyle}">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+        <div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:4px">⚠️ 알레르기</div>
+          <input id="ac-allergy" type="text" placeholder="해당없음" style="${inputStyle}">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:4px">🧊 보냉가방</div>
+          <input id="ac-coolbag" type="text" placeholder="일회용 보냉가방" style="${inputStyle}">
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:4px">💬 요청사항</div>
+        <textarea id="ac-memo" rows="2" placeholder="배송 시 요청사항..." style="${inputStyle};resize:vertical"></textarea>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:4px">💰 결제금액</div>
+        <input id="ac-amount" type="text" placeholder="0" style="${inputStyle}">
+      </div>
+    </div>`;
+
+  // 초기 서브타입 필드 표시 상태
+  acToggleSubFields();
+  document.getElementById('add-customer-modal').style.display = 'block';
+  setTimeout(() => document.getElementById('ac-name').focus(), 100);
+}
+
+function acToggleSubFields() {
+  const st = document.getElementById('ac-subtype');
+  const sf = document.getElementById('ac-sub-fields');
+  if (!st || !sf) return;
+  sf.style.display = st.value !== 'single' ? 'grid' : 'none';
+}
+
+function saveAddCustomer() {
+  const name = (document.getElementById('ac-name').value||'').trim();
+  if (!name) { alert('이름을 입력해주세요'); document.getElementById('ac-name').focus(); return; }
+
+  const subType  = document.getElementById('ac-subtype').value;
+  const dateVal  = document.getElementById('ac-date').value;
+  const dietRaw  = (document.getElementById('ac-diet').value||'').trim();
+  const menus    = dietRaw ? dietRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  const allergy  = (document.getElementById('ac-allergy').value||'').trim();
+  const type     = document.getElementById('ac-type').value;
+
+  const newOrder = {
+    id:           'MAN-' + Date.now(),
+    rawDate:      dateVal,
+    name,
+    phone:        (document.getElementById('ac-phone').value||'').trim(),
+    addr:         (document.getElementById('ac-addr').value||'').trim(),
+    doorPwd:      (document.getElementById('ac-doorpwd').value||'').trim(),
+    amount:       (document.getElementById('ac-amount').value||'').trim(),
+    allergy:      allergy !== '해당없음' ? allergy : '',
+    coolBag:      (document.getElementById('ac-coolbag').value||'').trim(),
+    extraMenu:    '',
+    memo:         (document.getElementById('ac-memo').value||'').trim(),
+    subType,
+    totalCount:   subType==='sub12'?12 : subType==='sub8'?8 : subType==='sub5'?5 : 0,
+    weekdays:     subType!=='single' ? (document.getElementById('ac-weekdays').value||'') : '',
+    session:      subType!=='single' ? (document.getElementById('ac-session').value||'').trim() : '',
+    datetime:     dateVal ? new Date(dateVal) : new Date(),
+    orderDate:    dateVal ? new Date(dateVal) : new Date(),
+    type,
+    deliveryZone: (document.getElementById('ac-zone').value||'').trim(),
+    dietMenu:     menus,
+    subConfig:    subType!=='single' ? menus : [],
+    babiProduct:  [],
+    status:       'pending',
+    items:        menus.map(m => ({menu: m, qty: 1})),
+    _importId:    'manual',
+  };
+
+  allOrders.push(newOrder);
+  saveOrdersToStorage();
+  // DB에도 저장
+  insertOrdersToDB([newOrder], 'imp_manual_'+Date.now(), '직접입력').then(ok => {
+    if (ok) setSyncBadge('ok');
+  });
+
+  closeAddCustomerModal();
+  renderOrdersUI();
+  applyAllFilters();
+  alert(`✅ "${name}" 고객이 추가되었습니다`);
+}
+
+function closeAddCustomerModal(e) {
+  if (e && e.target !== document.getElementById('add-customer-modal')) return;
+  document.getElementById('add-customer-modal').style.display = 'none';
+}
 
 // ============================================================
 // 편집 모달

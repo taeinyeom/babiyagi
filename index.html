@@ -1678,6 +1678,8 @@ async function loadOrdersFromDB() {
       id: h.id, filename: h.filename, count: h.count,
       date: new Date(h.imported_at).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})
     }));
+    // 정기배송 회차 누락분 자동 복구
+    expandSubscriptionSessions();
     // 로컬 캐시도 갱신
     saveOrdersToStorage();
     setSyncBadge('ok');
@@ -1801,6 +1803,71 @@ function safeJsonParse(val, fallback) {
   if (!val) return fallback;
   if (Array.isArray(val)) return val;
   try { return JSON.parse(val); } catch { return fallback; }
+}
+
+
+// ============================================================
+// 정기배송 회차 누락 자동 복구
+// DB에 1회차만 있는 정기배송을 전체 회차로 확장
+// ============================================================
+function expandSubscriptionSessions() {
+  // parentId 없는 정기배송 주문만 추출 (원본 회차)
+  const parents = allOrders.filter(o =>
+    o.subType !== 'single' && !o._parentId &&
+    o.totalCount > 0 && o.datetime
+  );
+
+  const existingIds = new Set(allOrders.map(o => o.id));
+  const toAdd = [];
+
+  parents.forEach(o => {
+    const totalCount = o.totalCount;
+    const startDate  = o.datetime instanceof Date ? o.datetime : new Date(o.datetime);
+    if (isNaN(startDate)) return;
+
+    const startDay = startDate.getDay();
+    const isTue = startDay === 2;
+    const isFri = startDay === 5;
+    if (!isTue && !isFri) return; // 화/금 아니면 패스
+
+    // 이미 몇 개 회차가 있는지 확인
+    const existingChildren = allOrders.filter(x =>
+      x._parentId === o.id || x.id === o.id
+    );
+    if (existingChildren.length >= totalCount) return; // 이미 다 있음
+
+    // 누락된 회차 생성
+    for (let i = 0; i < totalCount; i++) {
+      const childId = i === 0 ? o.id : o.id + '_s' + (i + 1);
+      if (existingIds.has(childId)) continue; // 이미 있음
+
+      const d = new Date(startDate);
+      const weekOffset = Math.floor(i / 2) * 7;
+      const dayOffset  = i % 2 === 0 ? 0 : (isTue ? 3 : 4);
+      d.setDate(startDate.getDate() + weekOffset + dayOffset);
+      const sessionLabel = (i + 1) + '/' + totalCount + '회차';
+
+      const newSession = Object.assign({}, o, {
+        id:        childId,
+        datetime:  d,
+        session:   sessionLabel,
+        _parentId: i === 0 ? undefined : o.id,
+        status:    'pending',
+      });
+      if (i !== 0) delete newSession._parentId; // 0회차는 parentId 없음
+      if (i !== 0) newSession._parentId = o.id;
+
+      toAdd.push(newSession);
+      existingIds.add(childId);
+    }
+  });
+
+  if (toAdd.length > 0) {
+    allOrders.push(...toAdd);
+    // DB에도 누락분 저장
+    insertOrdersToDB(toAdd, 'imp_expand_' + Date.now(), '회차복구').then(() => {});
+    console.log(`[회차복구] ${toAdd.length}개 회차 자동 생성`);
+  }
 }
 
 function saveOrdersToStorage() {

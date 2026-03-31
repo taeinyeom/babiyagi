@@ -1062,18 +1062,23 @@ function buildOrders(rows) {
     count: toAdd.length
   });
 
-  saveOrdersToStorage();
   closeImportModal();
-  renderOrdersUI();
-  // DB에 비동기 저장 (완료 후 history 갱신만, allOrders 재로드 없음)
-  insertOrdersToDB(toAdd, importId, fname).then(ok => {
-    renderImportHistory();
-    if (ok) setSyncBadge('ok');
-  });
+  // DB에 저장 후 DB에서 다시 로드 (단일 진실 공급원)
   const msg = skipped > 0
     ? `✅ ${toAdd.length}건 추가됨 (중복 ${skipped}건 제외, 전체 ${allOrders.length}건)`
     : `✅ ${toAdd.length}건 추가됨 (전체 ${allOrders.length}건)`;
-  alert(msg);
+  insertOrdersToDB(toAdd, importId, fname).then(async ok => {
+    if (ok) {
+      // DB 저장 성공 → DB에서 최신 데이터 로드
+      await loadOrdersFromDB();
+    } else {
+      // DB 저장 실패 → 로컬에만 저장
+      saveOrdersToStorage();
+    }
+    renderOrdersUI();
+    renderImportHistory();
+    alert(msg);
+  });
 }
 
 function detectSubType(subRaw, prod) {
@@ -1665,27 +1670,13 @@ function setSyncBadge(state) {
   el.style.color = color;
 }
 
-// 수동 새로고침
+// 수동 새로고침 (sync badge 클릭)
 async function manualSync() {
-  setSyncBadge('syncing');
   const ok = await loadOrdersFromDB();
-  if (ok) {
-    renderOrdersUI();
-    // 로컬에만 남은 수동 주문 있으면 DB에 재저장
-    const { data } = await _sb.from('orders').select('id');
-    if (data) {
-      const dbIds = new Set(data.map(r => r.id));
-      const missing = allOrders.filter(o => !dbIds.has(o.id));
-      if (missing.length > 0) {
-        const rows = missing.map(o => orderToDbRow(o));
-        await _sb.from('orders').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
-        console.log('[수동동기화] 누락 주문', missing.length, '건 재저장');
-      }
-    }
-  }
+  if (ok) renderOrdersUI();
 }
 
-// DB에서 전체 주문 로드
+// DB에서 전체 주문 로드 — DB가 단일 진실 공급원
 async function loadOrdersFromDB() {
   try {
     setSyncBadge('syncing');
@@ -1693,29 +1684,16 @@ async function loadOrdersFromDB() {
     if (error) throw error;
     const { data: hist } = await _sb.from('import_history').select('*').order('imported_at', { ascending: false });
 
-    const dbOrders = (data || []).map(dbRowToOrder);
-    // DB가 단일 진실 공급원이지만,
-    // DB 저장 실패한 로컬 수동 추가 주문은 보존 후 재시도
-    const dbIds = new Set(dbOrders.map(o => o.id));
-    const failedLocal = allOrders.filter(o =>
-      !dbIds.has(o.id) &&
-      (o._importId === 'manual' || (o.id && o.id.startsWith('MAN-')))
-    );
-    allOrders = [...dbOrders, ...failedLocal];
-    // 실패했던 수동 추가 주문 재저장 시도
-    if (failedLocal.length > 0) {
-      const rows = failedLocal.map(o => orderToDbRow(o));
-      _sb.from('orders').upsert(rows, { onConflict: 'id', ignoreDuplicates: true })
-        .then(() => console.log('[재저장]', failedLocal.length, '건'))
-        .catch(e => console.warn('재저장 실패:', e));
-    }
+    // DB 데이터로 완전 교체
+    allOrders = (data || []).map(dbRowToOrder);
+
     importHistory = (hist || []).map(h => ({
       id: h.id, filename: h.filename, count: h.count,
       date: new Date(h.imported_at).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})
     }));
     // 정기배송 회차 누락분 자동 복구
     expandSubscriptionSessions();
-    // 로컬 캐시도 갱신
+    // 로컬 캐시 갱신
     saveOrdersToStorage();
     setSyncBadge('ok');
     return true;
@@ -1726,22 +1704,19 @@ async function loadOrdersFromDB() {
   }
 }
 
-// 신규 주문 배열을 DB에 upsert (기존 id 있으면 무시 - onConflict ignore)
+// 신규 주문 배열을 DB에 저장 (id 충돌 시 무시 — 기존 데이터 우선)
 async function insertOrdersToDB(orders, importId, filename) {
+  if (!orders || orders.length === 0) return true;
   try {
     setSyncBadge('syncing');
     const rows = orders.map(o => orderToDbRow(o));
-    // 주문 저장 (id 충돌 시 무시)
     const { error } = await _sb.from('orders').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
     if (error) throw error;
 
-    // import_history는 별도 try — 실패해도 주문 저장은 유효
-    try {
-      await _sb.from('import_history').upsert(
-        { id: importId, filename, count: orders.length },
-        { onConflict: 'id', ignoreDuplicates: true }
-      );
-    } catch(he) { console.warn('import_history 저장 실패(무시):', he); }
+    // import_history: 실패해도 주문 저장에 영향 없음
+    await _sb.from('import_history')
+      .upsert({ id: importId, filename, count: orders.length }, { onConflict: 'id', ignoreDuplicates: true })
+      .catch(e => console.warn('import_history 무시:', e));
 
     setSyncBadge('ok');
     return true;
@@ -1933,34 +1908,40 @@ function saveOrdersToStorage() {
 }
 
 function loadOrdersFromStorage() {
-  // 로컬 캐시 먼저 렌더 (빠른 초기 표시)
+  // 1) 로컬 캐시로 빠른 첫 렌더
   try {
     const raw  = localStorage.getItem(ORD_STORAGE_KEY);
     const hist = localStorage.getItem(ORD_HISTORY_KEY);
     if (hist) importHistory = JSON.parse(hist);
     if (raw) {
-      const parsed = JSON.parse(raw);
-      allOrders = parsed.map(o => {
-        let dt = null;
-        if (o.datetime) { const d = new Date(o.datetime); dt = isNaN(d) ? null : d; }
-        return {
-          ...o, datetime: dt,
-          dietMenu:    Array.isArray(o.dietMenu)    ? o.dietMenu    : [],
-          subConfig:   Array.isArray(o.subConfig)   ? o.subConfig   : [],
-          weekdays:    o.weekdays || '',
-          babiProduct: Array.isArray(o.babiProduct) ? o.babiProduct : [],
-          items:       Array.isArray(o.items)       ? o.items       : [],
-          coolBag: o.coolBag||'', allergy: o.allergy||'', memo: o.memo||'',
-          deliveryZone: o.deliveryZone||'', status: o.status||'pending',
-          type: o.type||'배송', subType: o.subType||'single',
-        };
-      });
+      allOrders = JSON.parse(raw).map(deserializeOrder);
       setSyncBadge('offline');
+      renderOrdersUI();
     }
-  } catch(e) { console.warn('로컬 로드 실패:', e); allOrders = []; }
-  renderOrdersUI();
-  // 그 다음 DB에서 최신 데이터 pull
+  } catch(e) { console.warn('로컬 로드 실패:', e); }
+
+  // 2) DB에서 최신 데이터로 덮어씀 (항상 실행)
   loadOrdersFromDB().then(ok => { if (ok) renderOrdersUI(); });
+}
+
+function deserializeOrder(o) {
+  let dt = null;
+  if (o.datetime) { const d = new Date(o.datetime); dt = isNaN(d) ? null : d; }
+  return {
+    ...o, datetime: dt,
+    dietMenu:    Array.isArray(o.dietMenu)    ? o.dietMenu    : [],
+    subConfig:   Array.isArray(o.subConfig)   ? o.subConfig   : [],
+    weekdays:    o.weekdays    || '',
+    babiProduct: Array.isArray(o.babiProduct) ? o.babiProduct : [],
+    items:       Array.isArray(o.items)       ? o.items       : [],
+    coolBag:     o.coolBag     || '',
+    allergy:     o.allergy     || '',
+    memo:        o.memo        || '',
+    deliveryZone:o.deliveryZone|| '',
+    status:      o.status      || 'pending',
+    type:        o.type        || '배송',
+    subType:     o.subType     || 'single',
+  };
 }
 
 function renderOrdersUI() {
@@ -2278,17 +2259,18 @@ function saveAddCustomer() {
   const toAdd = ordersToAdd.filter(o => !existingIds.has(o.id));
   allOrders.push(...toAdd);
 
-  saveOrdersToStorage();
-  const importId = 'imp_manual_' + Date.now();
-  insertOrdersToDB(toAdd, importId, '직접입력').then(ok => {
-    if (ok) setSyncBadge('ok');
-  });
-
   closeAddCustomerModal();
-  renderOrdersUI();
-  applyAllFilters();
+  const importId = 'imp_manual_' + Date.now();
   const sessionInfo = subType!=='single' ? ` (총 ${toAdd.length}회차 생성)` : '';
-  alert(`✅ "${name}" 고객이 추가되었습니다${sessionInfo}`);
+  insertOrdersToDB(toAdd, importId, '직접입력').then(async ok => {
+    if (ok) {
+      await loadOrdersFromDB();
+    } else {
+      saveOrdersToStorage();
+    }
+    renderOrdersUI();
+    alert(`✅ "${name}" 고객이 추가되었습니다${sessionInfo}`);
+  });
 }
 
 function closeAddCustomerModal(e) {

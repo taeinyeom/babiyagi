@@ -1669,7 +1669,20 @@ function setSyncBadge(state) {
 async function manualSync() {
   setSyncBadge('syncing');
   const ok = await loadOrdersFromDB();
-  if (ok) renderOrdersUI();
+  if (ok) {
+    renderOrdersUI();
+    // 로컬에만 남은 수동 주문 있으면 DB에 재저장
+    const { data } = await _sb.from('orders').select('id');
+    if (data) {
+      const dbIds = new Set(data.map(r => r.id));
+      const missing = allOrders.filter(o => !dbIds.has(o.id));
+      if (missing.length > 0) {
+        const rows = missing.map(o => orderToDbRow(o));
+        await _sb.from('orders').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
+        console.log('[수동동기화] 누락 주문', missing.length, '건 재저장');
+      }
+    }
+  }
 }
 
 // DB에서 전체 주문 로드
@@ -1681,8 +1694,21 @@ async function loadOrdersFromDB() {
     const { data: hist } = await _sb.from('import_history').select('*').order('imported_at', { ascending: false });
 
     const dbOrders = (data || []).map(dbRowToOrder);
-    // DB가 단일 진실 공급원 — 로컬 merge 없이 DB 데이터로 완전 교체
-    allOrders = dbOrders;
+    // DB가 단일 진실 공급원이지만,
+    // DB 저장 실패한 로컬 수동 추가 주문은 보존 후 재시도
+    const dbIds = new Set(dbOrders.map(o => o.id));
+    const failedLocal = allOrders.filter(o =>
+      !dbIds.has(o.id) &&
+      (o._importId === 'manual' || (o.id && o.id.startsWith('MAN-')))
+    );
+    allOrders = [...dbOrders, ...failedLocal];
+    // 실패했던 수동 추가 주문 재저장 시도
+    if (failedLocal.length > 0) {
+      const rows = failedLocal.map(o => orderToDbRow(o));
+      _sb.from('orders').upsert(rows, { onConflict: 'id', ignoreDuplicates: true })
+        .then(() => console.log('[재저장]', failedLocal.length, '건'))
+        .catch(e => console.warn('재저장 실패:', e));
+    }
     importHistory = (hist || []).map(h => ({
       id: h.id, filename: h.filename, count: h.count,
       date: new Date(h.imported_at).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})
@@ -1705,13 +1731,18 @@ async function insertOrdersToDB(orders, importId, filename) {
   try {
     setSyncBadge('syncing');
     const rows = orders.map(o => orderToDbRow(o));
-    // id 충돌 시 무시 (기존 데이터 우선)
+    // 주문 저장 (id 충돌 시 무시)
     const { error } = await _sb.from('orders').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
     if (error) throw error;
 
-    await _sb.from('import_history').insert({
-      id: importId, filename, count: orders.length
-    });
+    // import_history는 별도 try — 실패해도 주문 저장은 유효
+    try {
+      await _sb.from('import_history').upsert(
+        { id: importId, filename, count: orders.length },
+        { onConflict: 'id', ignoreDuplicates: true }
+      );
+    } catch(he) { console.warn('import_history 저장 실패(무시):', he); }
+
     setSyncBadge('ok');
     return true;
   } catch(e) {

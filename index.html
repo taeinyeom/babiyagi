@@ -1244,18 +1244,22 @@ function calcSubStartDate(orderDate, isSubscription) {
 function getNextDeliveryDate(fromDate) {
   const d = fromDate ? new Date(fromDate) : new Date();
   const day = d.getDay();
-  let daysToTue = (2 - day + 7) % 7 || 7;
-  let daysToFri = (5 - day + 7) % 7 || 7;
-  const minDays = Math.min(daysToTue, daysToFri);
+  // 오늘이 화/금이면 오늘, 아니면 다음 화/금 중 가까운 날
+  const daysToTue = (2 - day + 7) % 7;
+  const daysToFri = (5 - day + 7) % 7;
+  const minDays = Math.min(
+    daysToTue === 0 ? 0 : daysToTue,
+    daysToFri === 0 ? 0 : daysToFri
+  );
   const next = new Date(d);
   next.setDate(d.getDate() + minDays);
   return next;
 }
-// 특정 요일(tue/fri)의 다음 배송일 반환
+// 특정 요일(tue/fri)의 배송일 반환 — 당일이면 당일, 아니면 다음 해당 요일
 function getNextWeekday(targetDay, fromDate) {
   const d = fromDate ? new Date(fromDate) : new Date();
   const day = d.getDay();
-  let diff = (targetDay - day + 7) % 7 || 7;
+  const diff = (targetDay - day + 7) % 7; // 0이면 당일
   const next = new Date(d);
   next.setDate(d.getDate() + diff);
   return next;

@@ -525,6 +525,20 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 
 </main>
 
+<!-- 버전 푸터 -->
+<div style="text-align:center;padding:1.5rem 1rem 2rem;border-top:1px solid var(--border);margin-top:2rem">
+  <div style="font-size:11px;color:var(--t3);font-family:'DM Mono',monospace">
+    바비야기 수원점 운영관리
+    <span style="margin:0 6px;opacity:.4">·</span>
+    <span id="app-version" style="color:var(--accent)">v1.3.0</span>
+    <span style="margin:0 6px;opacity:.4">·</span>
+    <span style="opacity:.6">2026</span>
+  </div>
+  <div style="font-size:10px;color:var(--t3);margin-top:4px;opacity:.5">
+    v1.0 최초 출시 → v1.1 파서 개선 → v1.2 고객추가/동기화 → v1.3 DB 호환성 수정
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 // ===================== DATA =====================
@@ -1710,18 +1724,28 @@ async function insertOrdersToDB(orders, importId, filename) {
   try {
     setSyncBadge('syncing');
     const rows = orders.map(o => orderToDbRow(o));
-    const { error } = await _sb.from('orders').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
-    if (error) throw error;
+    const { data, error } = await _sb.from('orders').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
+    if (error) {
+      // 에러 상세를 sync badge에 표시
+      const el = document.getElementById('sync-badge');
+      if (el) {
+        el.textContent = '⚠️ DB오류: ' + (error.message || error.code || JSON.stringify(error));
+        el.style.background = 'var(--rdim)';
+        el.style.color = 'var(--red)';
+      }
+      console.error('DB 저장 에러:', error);
+      throw error;
+    }
 
-    // import_history: 실패해도 주문 저장에 영향 없음
+    // import_history 저장 (실패해도 무관)
     await _sb.from('import_history')
       .upsert({ id: importId, filename, count: orders.length }, { onConflict: 'id', ignoreDuplicates: true })
-      .catch(e => console.warn('import_history 무시:', e));
+      .catch(() => {});
 
     setSyncBadge('ok');
     return true;
   } catch(e) {
-    console.warn('DB 저장 실패:', e);
+    console.error('DB 저장 실패 상세:', e);
     setSyncBadge('offline');
     return false;
   }
@@ -1756,7 +1780,16 @@ async function deleteAllOrdersFromDB() {
 }
 
 // JS 객체 → DB 행
+// extra 필드(sub_config, weekdays)는 diet_menu JSON에 메타로 포함 → 별도 컬럼 불필요
 function orderToDbRow(o) {
+  // diet_menu 컬럼에 전체 메뉴 메타 저장 (subConfig, weekdays 포함)
+  const dietMeta = JSON.stringify({
+    dietMenu:   o.dietMenu   || [],
+    subConfig:  o.subConfig  || [],
+    weekdays:   o.weekdays   || '',
+    babiProduct:o.babiProduct|| [],
+    extraMenu:  o.extraMenu  || '',
+  });
   return {
     id:            o.id,
     name:          o.name || '',
@@ -1771,9 +1804,7 @@ function orderToDbRow(o) {
     sub_type:      o.subType || 'single',
     session:       o.session || '',
     delivery_zone: o.deliveryZone || '',
-    diet_menu:     JSON.stringify(o.dietMenu || []),
-    sub_config:    JSON.stringify(o.subConfig || []),
-    weekdays:      o.weekdays || '',
+    diet_menu:     dietMeta,
     babi_product:  JSON.stringify(o.babiProduct || []),
     items:         JSON.stringify(o.items || []),
     status:        o.status || 'pending',
@@ -1781,13 +1812,30 @@ function orderToDbRow(o) {
     raw_date:      o.rawDate || '',
     datetime:      (o.datetime instanceof Date && !isNaN(o.datetime)) ? o.datetime.toISOString() : null,
     import_id:     o._importId || '',
-    parent_id:     o._parentId || '',
   };
 }
 
 // DB 행 → JS 객체
 function dbRowToOrder(r) {
   const dt = r.datetime ? new Date(r.datetime) : null;
+  // diet_menu가 메타 JSON인지 구형 배열인지 판단
+  const dietRaw = safeJsonParse(r.diet_menu, null);
+  let dietMenu = [], subConfig = [], weekdays = '', babiProduct = [], extraMenu = '';
+  if (dietRaw && !Array.isArray(dietRaw) && dietRaw.dietMenu) {
+    // 신형: 메타 객체
+    dietMenu    = dietRaw.dietMenu    || [];
+    subConfig   = dietRaw.subConfig   || [];
+    weekdays    = dietRaw.weekdays    || '';
+    babiProduct = dietRaw.babiProduct || [];
+    extraMenu   = dietRaw.extraMenu   || r.extra_menu || '';
+  } else {
+    // 구형: 배열
+    dietMenu    = Array.isArray(dietRaw) ? dietRaw : [];
+    subConfig   = safeJsonParse(r.sub_config, []);
+    weekdays    = r.weekdays || '';
+    babiProduct = safeJsonParse(r.babi_product, []);
+    extraMenu   = r.extra_menu || '';
+  }
   return {
     id:           r.id,
     name:         r.name || '',
@@ -1797,22 +1845,21 @@ function dbRowToOrder(r) {
     amount:       r.amount || '',
     allergy:      r.allergy || '',
     coolBag:      r.cool_bag || '',
-    extraMenu:    r.extra_menu || '',
+    extraMenu,
     memo:         r.memo || '',
     subType:      r.sub_type || 'single',
     session:      r.session || '',
     deliveryZone: r.delivery_zone || '',
-    dietMenu:     safeJsonParse(r.diet_menu, []),
-    subConfig:    safeJsonParse(r.sub_config, []),
-    weekdays:     r.weekdays || '',
-    babiProduct:  safeJsonParse(r.babi_product, []),
+    dietMenu,
+    subConfig,
+    weekdays,
+    babiProduct,
     items:        safeJsonParse(r.items, []),
     status:       r.status || 'pending',
     type:         r.type || '배송',
     rawDate:      r.raw_date || '',
     datetime:     (dt && !isNaN(dt)) ? dt : null,
     _importId:    r.import_id || '',
-    _parentId:    r.parent_id || undefined,
   };
 }
 

@@ -2395,17 +2395,15 @@ async function extractAddresses() {
       return;
     }
 
-    status.textContent = `${deliveryAddresses.length}개 주소 추출 완료. 카카오 지도 로딩 중...`;
+    status.textContent = `${deliveryAddresses.length}개 주소 추출 완료. 지도 준비 중...`;
     renderAddrTable();
     document.getElementById('delivery-result').style.display = 'block';
 
-    // 카카오 SDK 먼저 로드 → geocode → 지도 표시 순서
-    await loadKakaoSDK();
-    kakao.maps.load(async () => {
-      await geocodeAll();
-      renderAddrTable();
-      _buildKakaoMap(deliveryAddresses.filter(a => a.lat && a.lng));
-    });
+    // SDK 로드 (최초 1회) → geocode → 지도 표시
+    await ensureKakaoReady();
+    await geocodeAll();
+    renderAddrTable();
+    _buildKakaoMap(deliveryAddresses.filter(a => a.lat && a.lng));
 
   } catch(e) {
     console.error('주소 추출 실패:', e);
@@ -2416,45 +2414,44 @@ async function extractAddresses() {
   }
 }
 
-// 카카오 SDK 내장 Geocoder로 좌표 변환 (CORS 없음)
-function geocodeWithKakao(addresses, onProgress, onDone) {
-  const geocoder = new kakao.maps.services.Geocoder();
-  let success = 0;
-  let completed = 0;
-
-  addresses.forEach((a, i) => {
-    geocoder.addressSearch(a.address, (result, status) => {
+// 주소 1개 → 좌표 변환 (Promise 래핑)
+function geocodeOne(geocoder, address) {
+  return new Promise(resolve => {
+    geocoder.addressSearch(address, (result, status) => {
       if (status === kakao.maps.services.Status.OK && result[0]) {
-        deliveryAddresses[i].lat = parseFloat(result[0].y);
-        deliveryAddresses[i].lng = parseFloat(result[0].x);
-        success++;
-        // 테이블 실시간 업데이트
-        const row = document.getElementById('addr-row-' + a.idx);
-        if (row) { const nc = row.querySelector('.no-coord'); if (nc) nc.remove(); }
+        resolve({ lat: parseFloat(result[0].y), lng: parseFloat(result[0].x) });
       } else {
-        console.warn('좌표 없음:', a.address);
+        resolve(null);
       }
-      completed++;
-      onProgress(completed, addresses.length, a.name, success);
-      if (completed === addresses.length) onDone(success, addresses.length - success);
     });
   });
 }
 
+// 전체 주소 병렬 변환
 async function geocodeAll() {
   const statusEl = document.getElementById('extract-status');
-  return new Promise(resolve => {
-    geocodeWithKakao(
-      deliveryAddresses,
-      (done, total, name, success) => {
-        statusEl.textContent = `📍 좌표 변환 중... ${done}/${total} (성공 ${success}개)`;
-      },
-      (success, failed) => {
-        statusEl.textContent = `✅ 완료: ${success}개 좌표 변환 성공${failed > 0 ? `, ${failed}개 실패` : ''}`;
-        resolve();
-      }
-    );
+  statusEl.textContent = `📍 ${deliveryAddresses.length}개 주소 좌표 변환 중...`;
+
+  const geocoder = new kakao.maps.services.Geocoder();
+
+  // 모두 동시에 요청
+  const results = await Promise.all(
+    deliveryAddresses.map(a => geocodeOne(geocoder, a.address))
+  );
+
+  let success = 0;
+  results.forEach((r, i) => {
+    if (r) {
+      deliveryAddresses[i].lat = r.lat;
+      deliveryAddresses[i].lng = r.lng;
+      success++;
+    } else {
+      console.warn('좌표 없음:', deliveryAddresses[i].address);
+    }
   });
+
+  const failed = deliveryAddresses.length - success;
+  statusEl.textContent = `✅ 완료: ${success}개 좌표 변환 성공${failed > 0 ? `, ${failed}개 실패` : ''}`;
 }
 
 // 주소 테이블 렌더
@@ -2485,12 +2482,18 @@ function renderAddrTable() {
 // 카카오 SDK 로드 헬퍼
 const KAKAO_JS_KEY = 'e8c205e9064a061cf22c26dddfdb9348';
 
-function loadKakaoSDK() {
+function ensureKakaoReady() {
   return new Promise(resolve => {
-    if (window.kakao && window.kakao.maps) { resolve(); return; }
+    // 이미 완전히 로드된 경우
+    if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
+      resolve(); return;
+    }
+    // SDK 스크립트 로드
     const script = document.createElement('script');
     script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}&libraries=services&autoload=false`;
-    script.onload = resolve;
+    script.onload = () => {
+      kakao.maps.load(resolve); // autoload=false이므로 load() 필수
+    };
     document.head.appendChild(script);
   });
 }

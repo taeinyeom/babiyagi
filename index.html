@@ -2412,46 +2412,37 @@ async function extractAddresses() {
   }
 }
 
-// 전체 주소 → Nominatim 검색용 도로명+번지만 추출
-function toGeocodeAddr(fullAddr) {
-  const s = fullAddr.trim();
-  // 도로명+번지 추출 (괄호 제거 전에 패턴 매칭 → 붙어있는 동호수 방지)
-  const m = s.match(/([가-힣0-9가-힣]+(?:로|길)\d*번?길?)\s+(\d+)/);
-  if (m) {
-    const prefix = s.slice(0, m.index).trim();
-    return `${prefix} ${m[1]} ${m[2]}`.trim();
+// 카카오 주소 검색 API로 좌표 변환
+const KAKAO_REST_KEY = '0ec8591bc8af8a1f2184492d8533b8ee';
+
+async function geocodeOne(address) {
+  const res = await fetch(
+    `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(address)}`,
+    { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } }
+  );
+  const data = await res.json();
+  if (data.documents && data.documents.length > 0) {
+    const doc = data.documents[0];
+    return { lat: parseFloat(doc.y), lng: parseFloat(doc.x) };
   }
-  // 읍/면 + 길+숫자 (번지 공백 없는 경우: "상리1길167")
-  const m2 = s.match(/([가-힣0-9]+(?:로|길)\d+)/);
-  if (m2) {
-    return s.slice(0, m2.index + m2[0].length).trim();
-  }
-  // fallback: 괄호만 제거
-  return s.replace(/\s*\([^)]+\).*/g, '').trim();
+  return null;
 }
 
-// Nominatim으로 전체 주소 → 위경도 변환 (실시간 업데이트)
 async function geocodeAll() {
   let success = 0;
+  const statusEl = document.getElementById('extract-status');
+
   for (let i = 0; i < deliveryAddresses.length; i++) {
     const a = deliveryAddresses[i];
-    document.getElementById('extract-status').textContent =
-      `📍 좌표 변환 중... ${i+1}/${deliveryAddresses.length} (${a.name})`;
+    statusEl.textContent = `📍 좌표 변환 중... ${i+1}/${deliveryAddresses.length} (${a.name})`;
     try {
-      const geocodeAddr = toGeocodeAddr(a.address);
-      const q = encodeURIComponent(geocodeAddr);
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&accept-language=ko&countrycodes=kr`,
-        { headers: { 'User-Agent': 'babiyagi-delivery/1.0' } }
-      );
-      const data = await res.json();
-      if (data && data[0]) {
-        deliveryAddresses[i].lat = parseFloat(data[0].lat);
-        deliveryAddresses[i].lng = parseFloat(data[0].lon);
-        deliveryAddresses[i].geocodeAddr = geocodeAddr; // 디버그용
+      const result = await geocodeOne(a.address);
+      if (result) {
+        deliveryAddresses[i].lat = result.lat;
+        deliveryAddresses[i].lng = result.lng;
         success++;
       } else {
-        console.warn('좌표 없음:', geocodeAddr);
+        console.warn('좌표 없음:', a.address);
       }
     } catch(e) {
       console.warn('geocode 실패:', a.address, e);
@@ -2462,12 +2453,10 @@ async function geocodeAll() {
       const noCoord = row.querySelector('.no-coord');
       if (noCoord && deliveryAddresses[i].lat) noCoord.remove();
     }
-    // Nominatim rate limit: 1 req/sec
-    if (i < deliveryAddresses.length - 1) await new Promise(r => setTimeout(r, 1100));
   }
+
   const failed = deliveryAddresses.length - success;
-  document.getElementById('extract-status').textContent =
-    `✅ 완료: ${success}개 좌표 변환 성공${failed > 0 ? `, ${failed}개 실패(지도 미표시)` : ''}`;
+  statusEl.textContent = `✅ 완료: ${success}개 좌표 변환 성공${failed > 0 ? `, ${failed}개 실패` : ''}`;
 }
 
 // 주소 테이블 렌더
@@ -2495,7 +2484,9 @@ function renderAddrTable() {
     </tr>`).join('');
 }
 
-// Leaflet 지도 초기화
+// 카카오 지도 초기화
+const KAKAO_JS_KEY = 'e8c205e9064a061cf22c26dddfdb9348';
+
 function initDeliveryMap() {
   const valid = deliveryAddresses.filter(a => a.lat && a.lng);
   if (valid.length === 0) {
@@ -2504,81 +2495,90 @@ function initDeliveryMap() {
   }
   document.getElementById('map-loading').style.display = 'none';
 
-  // Leaflet이 없으면 로드
-  if (!window.L) {
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    document.head.appendChild(link);
+  if (!window.kakao || !window.kakao.maps) {
     const script = document.createElement('script');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.onload = () => _buildMap(valid);
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}&autoload=false`;
+    script.onload = () => kakao.maps.load(() => _buildKakaoMap(valid));
     document.head.appendChild(script);
   } else {
-    _buildMap(valid);
+    kakao.maps.load(() => _buildKakaoMap(valid));
   }
 }
 
-function _buildMap(valid) {
+function _buildKakaoMap(valid) {
   const mapEl = document.getElementById('delivery-map');
-
-  // 기존 지도 제거
-  if (leafletMap) { leafletMap.remove(); leafletMap = null; }
   leafletMarkers = [];
 
-  const center = [
-    valid.reduce((s,a) => s + a.lat, 0) / valid.length,
-    valid.reduce((s,a) => s + a.lng, 0) / valid.length
-  ];
+  // 중심 좌표 계산
+  const centerLat = valid.reduce((s,a) => s + a.lat, 0) / valid.length;
+  const centerLng = valid.reduce((s,a) => s + a.lng, 0) / valid.length;
 
-  leafletMap = L.map('delivery-map').setView(center, 13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors'
-  }).addTo(leafletMap);
+  const map = new kakao.maps.Map(mapEl, {
+    center: new kakao.maps.LatLng(centerLat, centerLng),
+    level: 5
+  });
+  leafletMap = map; // 재사용
 
-  // 번호 마커 아이콘
+  // 마커 + 인포윈도우
+  const bounds = new kakao.maps.LatLngBounds();
   valid.forEach(a => {
-    const icon = L.divIcon({
-      className: '',
-      html: `<div style="
-        background:var(--accent);color:#1a1814;
-        width:28px;height:28px;border-radius:50%;
+    const pos = new kakao.maps.LatLng(a.lat, a.lng);
+    bounds.extend(pos);
+
+    // 번호 커스텀 오버레이
+    const overlay = new kakao.maps.CustomOverlay({
+      position: pos,
+      content: `<div onclick="focusMarker(${a.idx})" style="
+        background:#e8a045;color:#1a1814;
+        width:30px;height:30px;border-radius:50%;
         display:flex;align-items:center;justify-content:center;
         font-size:12px;font-weight:700;font-family:'DM Mono',monospace;
-        border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4);
-        cursor:pointer;
+        border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);
+        cursor:pointer;transform:translate(-50%,-50%);
       ">${a.idx}</div>`,
-      iconSize: [28, 28],
-      iconAnchor: [14, 14],
+      zIndex: 3,
+    });
+    overlay.setMap(map);
+
+    const infoEl = document.createElement('div');
+    infoEl.style.cssText = 'background:#fff;border-radius:8px;padding:10px 12px;min-width:200px;max-width:260px;font-family:Noto Sans KR,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.2);font-size:13px;line-height:1.5';
+    infoEl.innerHTML = `
+      <div style="font-weight:700;margin-bottom:4px">${a.idx}. ${a.name}</div>
+      <div style="font-size:11px;color:#555;margin-bottom:4px">${a.address}</div>
+      ${a.menu ? `<div style="font-size:11px;color:#e8a045;margin-bottom:4px">🥘 ${a.menu}</div>` : ''}
+      ${a.memo ? `<div style="font-size:11px;background:#f5f5f5;padding:3px 6px;border-radius:4px;margin-bottom:4px">🔑 ${a.memo}</div>` : ''}
+      <a href="https://map.kakao.com/link/search/${encodeURIComponent(a.address)}" target="_blank"
+         style="font-size:11px;color:#4a9ced;text-decoration:none">카카오 지도에서 보기 →</a>`;
+
+    const infoWindow = new kakao.maps.CustomOverlay({
+      position: pos,
+      content: infoEl,
+      yAnchor: 1.3,
+      zIndex: 10,
     });
 
-    const popup = `
-      <div style="min-width:200px;font-family:'Noto Sans KR',sans-serif">
-        <div style="font-weight:700;font-size:14px;margin-bottom:4px">${a.idx}. ${a.name}</div>
-        <div style="font-size:12px;color:#555;margin-bottom:4px">${a.address}</div>
-        ${a.menu ? `<div style="font-size:11px;color:#e8a045;margin-bottom:4px">🥘 ${a.menu}</div>` : ''}
-        ${a.memo ? `<div style="font-size:11px;background:#f5f5f5;padding:4px 6px;border-radius:4px;margin-bottom:4px">🔑 ${a.memo}</div>` : ''}
-        <a href="https://map.naver.com/p/search/${encodeURIComponent(a.address)}" target="_blank"
-           style="font-size:11px;color:#4a9ced">네이버 지도에서 보기 →</a>
-      </div>`;
+    kakao.maps.event.addListener(overlay, 'click', () => {
+      // 다른 인포윈도우 닫기
+      leafletMarkers.forEach(m => m.info.setMap(null));
+      infoWindow.setMap(map);
+      map.panTo(pos);
+    });
 
-    const marker = L.marker([a.lat, a.lng], { icon })
-      .addTo(leafletMap)
-      .bindPopup(popup);
-    leafletMarkers.push({ idx: a.idx, marker });
+    leafletMarkers.push({ idx: a.idx, overlay, info: infoWindow, pos });
   });
 
-  // 전체 마커 보이도록 zoom fit
-  const bounds = L.latLngBounds(valid.map(a => [a.lat, a.lng]));
-  leafletMap.fitBounds(bounds, { padding: [40, 40] });
+  // 전체 마커 보이도록
+  map.setBounds(bounds);
 }
 
 function focusMarker(idx) {
-  if (!leafletMap) return;
+  if (!leafletMap || !window.kakao) return;
   const found = leafletMarkers.find(m => m.idx === idx);
   if (found) {
-    leafletMap.setView(found.marker.getLatLng(), 16);
-    found.marker.openPopup();
+    leafletMarkers.forEach(m => m.info.setMap(null));
+    found.info.setMap(leafletMap);
+    leafletMap.panTo(found.pos);
+    leafletMap.setLevel(3);
     // 테이블 행 하이라이트
     document.querySelectorAll('[id^="addr-row-"]').forEach(r => r.style.background = '');
     const row = document.getElementById('addr-row-' + idx);
@@ -2596,9 +2596,11 @@ function clearDeliveryMap() {
   document.getElementById('delivery-text-input').value = '';
   document.getElementById('delivery-result').style.display = 'none';
   document.getElementById('extract-status').textContent = '';
-  if (leafletMap) { leafletMap.remove(); leafletMap = null; leafletMarkers = []; }
-  document.getElementById('map-loading').style.display = 'flex';
-  document.getElementById('map-loading').textContent = '주소 추출 후 지도가 표시됩니다';
+  leafletMap = null;
+  leafletMarkers = [];
+  // 지도 컨테이너 초기화
+  const mapEl = document.getElementById('delivery-map');
+  mapEl.innerHTML = '<div id="map-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:13px">주소 추출 후 지도가 표시됩니다</div>';
 }
 
 

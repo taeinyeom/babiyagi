@@ -2395,13 +2395,17 @@ async function extractAddresses() {
       return;
     }
 
-    status.textContent = `${deliveryAddresses.length}개 주소 추출 완료. 지도 좌표 변환 중... (주소당 약 1초)`;
+    status.textContent = `${deliveryAddresses.length}개 주소 추출 완료. 카카오 지도 로딩 중...`;
     renderAddrTable();
     document.getElementById('delivery-result').style.display = 'block';
 
-    await geocodeAll();
-    renderAddrTable();
-    initDeliveryMap();
+    // 카카오 SDK 먼저 로드 → geocode → 지도 표시 순서
+    await loadKakaoSDK();
+    kakao.maps.load(async () => {
+      await geocodeAll();
+      renderAddrTable();
+      _buildKakaoMap(deliveryAddresses.filter(a => a.lat && a.lng));
+    });
 
   } catch(e) {
     console.error('주소 추출 실패:', e);
@@ -2412,51 +2416,45 @@ async function extractAddresses() {
   }
 }
 
-// 카카오 주소 검색 API로 좌표 변환
-const KAKAO_REST_KEY = '0ec8591bc8af8a1f2184492d8533b8ee';
-
-async function geocodeOne(address) {
-  const res = await fetch(
-    `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(address)}`,
-    { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } }
-  );
-  const data = await res.json();
-  if (data.documents && data.documents.length > 0) {
-    const doc = data.documents[0];
-    return { lat: parseFloat(doc.y), lng: parseFloat(doc.x) };
-  }
-  return null;
-}
-
-async function geocodeAll() {
+// 카카오 SDK 내장 Geocoder로 좌표 변환 (CORS 없음)
+function geocodeWithKakao(addresses, onProgress, onDone) {
+  const geocoder = new kakao.maps.services.Geocoder();
   let success = 0;
-  const statusEl = document.getElementById('extract-status');
+  let completed = 0;
 
-  for (let i = 0; i < deliveryAddresses.length; i++) {
-    const a = deliveryAddresses[i];
-    statusEl.textContent = `📍 좌표 변환 중... ${i+1}/${deliveryAddresses.length} (${a.name})`;
-    try {
-      const result = await geocodeOne(a.address);
-      if (result) {
-        deliveryAddresses[i].lat = result.lat;
-        deliveryAddresses[i].lng = result.lng;
+  addresses.forEach((a, i) => {
+    geocoder.addressSearch(a.address, (result, status) => {
+      if (status === kakao.maps.services.Status.OK && result[0]) {
+        deliveryAddresses[i].lat = parseFloat(result[0].y);
+        deliveryAddresses[i].lng = parseFloat(result[0].x);
         success++;
+        // 테이블 실시간 업데이트
+        const row = document.getElementById('addr-row-' + a.idx);
+        if (row) { const nc = row.querySelector('.no-coord'); if (nc) nc.remove(); }
       } else {
         console.warn('좌표 없음:', a.address);
       }
-    } catch(e) {
-      console.warn('geocode 실패:', a.address, e);
-    }
-    // 실시간 테이블 업데이트
-    const row = document.getElementById('addr-row-' + a.idx);
-    if (row) {
-      const noCoord = row.querySelector('.no-coord');
-      if (noCoord && deliveryAddresses[i].lat) noCoord.remove();
-    }
-  }
+      completed++;
+      onProgress(completed, addresses.length, a.name, success);
+      if (completed === addresses.length) onDone(success, addresses.length - success);
+    });
+  });
+}
 
-  const failed = deliveryAddresses.length - success;
-  statusEl.textContent = `✅ 완료: ${success}개 좌표 변환 성공${failed > 0 ? `, ${failed}개 실패` : ''}`;
+async function geocodeAll() {
+  const statusEl = document.getElementById('extract-status');
+  return new Promise(resolve => {
+    geocodeWithKakao(
+      deliveryAddresses,
+      (done, total, name, success) => {
+        statusEl.textContent = `📍 좌표 변환 중... ${done}/${total} (성공 ${success}개)`;
+      },
+      (success, failed) => {
+        statusEl.textContent = `✅ 완료: ${success}개 좌표 변환 성공${failed > 0 ? `, ${failed}개 실패` : ''}`;
+        resolve();
+      }
+    );
+  });
 }
 
 // 주소 테이블 렌더
@@ -2484,25 +2482,23 @@ function renderAddrTable() {
     </tr>`).join('');
 }
 
-// 카카오 지도 초기화
+// 카카오 SDK 로드 헬퍼
 const KAKAO_JS_KEY = 'e8c205e9064a061cf22c26dddfdb9348';
 
-function initDeliveryMap() {
-  const valid = deliveryAddresses.filter(a => a.lat && a.lng);
-  if (valid.length === 0) {
-    document.getElementById('map-loading').textContent = '좌표 변환에 성공한 주소가 없습니다';
-    return;
-  }
-  document.getElementById('map-loading').style.display = 'none';
-
-  if (!window.kakao || !window.kakao.maps) {
+function loadKakaoSDK() {
+  return new Promise(resolve => {
+    if (window.kakao && window.kakao.maps) { resolve(); return; }
     const script = document.createElement('script');
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}&autoload=false`;
-    script.onload = () => kakao.maps.load(() => _buildKakaoMap(valid));
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}&libraries=services&autoload=false`;
+    script.onload = resolve;
     document.head.appendChild(script);
-  } else {
-    kakao.maps.load(() => _buildKakaoMap(valid));
-  }
+  });
+}
+
+// 카카오 지도 초기화
+
+function initDeliveryMap() {
+  // extractAddresses에서 직접 _buildKakaoMap 호출하므로 이 함수는 미사용
 }
 
 function _buildKakaoMap(valid) {

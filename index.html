@@ -2481,107 +2481,104 @@ function renderAddrTable() {
 
 // 카카오 SDK 로드 헬퍼
 const KAKAO_JS_KEY = 'e8c205e9064a061cf22c26dddfdb9348';
+let kakaoMapInstance = null;
 
+// 카카오 SDK 로드 + 초기화 완료까지 대기
 function ensureKakaoReady() {
   return new Promise(resolve => {
-    // 이미 완전히 로드된 경우
     if (window.kakao && window.kakao.maps && window.kakao.maps.services) {
       resolve(); return;
     }
-    // SDK 스크립트 로드
     const script = document.createElement('script');
     script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}&libraries=services&autoload=false`;
-    script.onload = () => {
-      kakao.maps.load(resolve); // autoload=false이므로 load() 필수
-    };
+    script.onload = () => kakao.maps.load(resolve);
+    script.onerror = () => { alert('카카오 지도 SDK 로드 실패. 도메인 등록을 확인해주세요.'); };
     document.head.appendChild(script);
   });
 }
 
-// 카카오 지도 초기화
-
-function initDeliveryMap() {
-  // extractAddresses에서 직접 _buildKakaoMap 호출하므로 이 함수는 미사용
-}
+function initDeliveryMap() {}  // 미사용
 
 function _buildKakaoMap(valid) {
+  if (!valid || valid.length === 0) {
+    document.getElementById('map-loading').style.display = 'flex';
+    document.getElementById('map-loading').textContent = '좌표 변환에 성공한 주소가 없습니다';
+    return;
+  }
+  document.getElementById('map-loading').style.display = 'none';
+
   const mapEl = document.getElementById('delivery-map');
   leafletMarkers = [];
 
-  // 중심 좌표 계산
   const centerLat = valid.reduce((s,a) => s + a.lat, 0) / valid.length;
   const centerLng = valid.reduce((s,a) => s + a.lng, 0) / valid.length;
 
+  // 기존 지도 제거 후 재생성
+  mapEl.innerHTML = '';
   const map = new kakao.maps.Map(mapEl, {
     center: new kakao.maps.LatLng(centerLat, centerLng),
     level: 5
   });
-  leafletMap = map; // 재사용
+  kakaoMapInstance = map;
+  leafletMap = map;
 
-  // 마커 + 인포윈도우
   const bounds = new kakao.maps.LatLngBounds();
+
   valid.forEach(a => {
     const pos = new kakao.maps.LatLng(a.lat, a.lng);
     bounds.extend(pos);
 
-    // 번호 커스텀 오버레이
-    const overlay = new kakao.maps.CustomOverlay({
+    // 인포윈도우 (표준 InfoWindow 사용 - 가장 안정적)
+    const iwContent = `<div style="padding:10px 12px;min-width:180px;max-width:240px;font-size:13px;line-height:1.6">
+      <div style="font-weight:700;margin-bottom:3px">${a.idx}. ${a.name}</div>
+      <div style="font-size:11px;color:#666;margin-bottom:3px">${a.address}</div>
+      ${a.menu ? `<div style="font-size:11px;color:#e8a045;margin-bottom:3px">🥘 ${a.menu}</div>` : ''}
+      ${a.memo ? `<div style="font-size:11px;background:#f5f5f5;padding:2px 5px;border-radius:3px;margin-bottom:3px">🔑 ${a.memo}</div>` : ''}
+    </div>`;
+
+    const infoWindow = new kakao.maps.InfoWindow({
+      content: iwContent,
+      removable: true,
+    });
+
+    // 표준 마커 + 번호 오버레이
+    const marker = new kakao.maps.Marker({ position: pos, map });
+
+    // 번호 표시 커스텀 오버레이 (onclick은 HTML 인라인)
+    const numOverlay = new kakao.maps.CustomOverlay({
       position: pos,
-      content: `<div onclick="focusMarker(${a.idx})" style="
-        background:#e8a045;color:#1a1814;
-        width:30px;height:30px;border-radius:50%;
-        display:flex;align-items:center;justify-content:center;
-        font-size:12px;font-weight:700;font-family:'DM Mono',monospace;
-        border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);
-        cursor:pointer;transform:translate(-50%,-50%);
-      ">${a.idx}</div>`,
-      zIndex: 3,
+      content: `<div style="background:#e8a045;color:#1a1814;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);margin-top:-52px;margin-left:2px;pointer-events:none">${a.idx}</div>`,
+      zIndex: 5,
     });
-    overlay.setMap(map);
+    numOverlay.setMap(map);
 
-    const infoEl = document.createElement('div');
-    infoEl.style.cssText = 'background:#fff;border-radius:8px;padding:10px 12px;min-width:200px;max-width:260px;font-family:Noto Sans KR,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.2);font-size:13px;line-height:1.5';
-    infoEl.innerHTML = `
-      <div style="font-weight:700;margin-bottom:4px">${a.idx}. ${a.name}</div>
-      <div style="font-size:11px;color:#555;margin-bottom:4px">${a.address}</div>
-      ${a.menu ? `<div style="font-size:11px;color:#e8a045;margin-bottom:4px">🥘 ${a.menu}</div>` : ''}
-      ${a.memo ? `<div style="font-size:11px;background:#f5f5f5;padding:3px 6px;border-radius:4px;margin-bottom:4px">🔑 ${a.memo}</div>` : ''}
-      <a href="https://map.kakao.com/link/search/${encodeURIComponent(a.address)}" target="_blank"
-         style="font-size:11px;color:#4a9ced;text-decoration:none">카카오 지도에서 보기 →</a>`;
-
-    const infoWindow = new kakao.maps.CustomOverlay({
-      position: pos,
-      content: infoEl,
-      yAnchor: 1.3,
-      zIndex: 10,
+    // 마커 클릭 → 인포윈도우
+    kakao.maps.event.addListener(marker, 'click', () => {
+      leafletMarkers.forEach(m => m.iw.close());
+      infoWindow.open(map, marker);
+      // 테이블 하이라이트
+      document.querySelectorAll('[id^="addr-row-"]').forEach(r => r.style.background = '');
+      const row = document.getElementById('addr-row-' + a.idx);
+      if (row) { row.style.background = 'rgba(232,160,69,.15)'; row.scrollIntoView({behavior:'smooth',block:'nearest'}); }
     });
 
-    kakao.maps.event.addListener(overlay, 'click', () => {
-      // 다른 인포윈도우 닫기
-      leafletMarkers.forEach(m => m.info.setMap(null));
-      infoWindow.setMap(map);
-      map.panTo(pos);
-    });
-
-    leafletMarkers.push({ idx: a.idx, overlay, info: infoWindow, pos });
+    leafletMarkers.push({ idx: a.idx, marker, iw: infoWindow, pos });
   });
 
-  // 전체 마커 보이도록
   map.setBounds(bounds);
 }
 
 function focusMarker(idx) {
-  if (!leafletMap || !window.kakao) return;
+  if (!kakaoMapInstance || !window.kakao) return;
   const found = leafletMarkers.find(m => m.idx === idx);
   if (found) {
-    leafletMarkers.forEach(m => m.info.setMap(null));
-    found.info.setMap(leafletMap);
-    leafletMap.panTo(found.pos);
-    leafletMap.setLevel(3);
-    // 테이블 행 하이라이트
+    leafletMarkers.forEach(m => m.iw.close());
+    found.iw.open(kakaoMapInstance, found.marker);
+    kakaoMapInstance.panTo(found.pos);
+    kakaoMapInstance.setLevel(3);
     document.querySelectorAll('[id^="addr-row-"]').forEach(r => r.style.background = '');
     const row = document.getElementById('addr-row-' + idx);
-    if (row) { row.style.background = 'var(--adim)'; row.scrollIntoView({ behavior:'smooth', block:'nearest' }); }
+    if (row) { row.style.background = 'rgba(232,160,69,.15)'; row.scrollIntoView({behavior:'smooth',block:'nearest'}); }
   }
 }
 
@@ -2596,8 +2593,8 @@ function clearDeliveryMap() {
   document.getElementById('delivery-result').style.display = 'none';
   document.getElementById('extract-status').textContent = '';
   leafletMap = null;
+  kakaoMapInstance = null;
   leafletMarkers = [];
-  // 지도 컨테이너 초기화
   const mapEl = document.getElementById('delivery-map');
   mapEl.innerHTML = '<div id="map-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:13px">주소 추출 후 지도가 표시됩니다</div>';
 }

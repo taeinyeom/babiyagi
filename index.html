@@ -2412,6 +2412,24 @@ async function extractAddresses() {
   }
 }
 
+// 전체 주소 → Nominatim 검색용 도로명+번지만 추출
+function toGeocodeAddr(fullAddr) {
+  const s = fullAddr.trim();
+  // 도로명+번지 추출 (괄호 제거 전에 패턴 매칭 → 붙어있는 동호수 방지)
+  const m = s.match(/([가-힣0-9가-힣]+(?:로|길)\d*번?길?)\s+(\d+)/);
+  if (m) {
+    const prefix = s.slice(0, m.index).trim();
+    return `${prefix} ${m[1]} ${m[2]}`.trim();
+  }
+  // 읍/면 + 길+숫자 (번지 공백 없는 경우: "상리1길167")
+  const m2 = s.match(/([가-힣0-9]+(?:로|길)\d+)/);
+  if (m2) {
+    return s.slice(0, m2.index + m2[0].length).trim();
+  }
+  // fallback: 괄호만 제거
+  return s.replace(/\s*\([^)]+\).*/g, '').trim();
+}
+
 // Nominatim으로 전체 주소 → 위경도 변환 (실시간 업데이트)
 async function geocodeAll() {
   let success = 0;
@@ -2420,7 +2438,8 @@ async function geocodeAll() {
     document.getElementById('extract-status').textContent =
       `📍 좌표 변환 중... ${i+1}/${deliveryAddresses.length} (${a.name})`;
     try {
-      const q = encodeURIComponent(a.address);
+      const geocodeAddr = toGeocodeAddr(a.address);
+      const q = encodeURIComponent(geocodeAddr);
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&accept-language=ko&countrycodes=kr`,
         { headers: { 'User-Agent': 'babiyagi-delivery/1.0' } }
@@ -2429,7 +2448,10 @@ async function geocodeAll() {
       if (data && data[0]) {
         deliveryAddresses[i].lat = parseFloat(data[0].lat);
         deliveryAddresses[i].lng = parseFloat(data[0].lon);
+        deliveryAddresses[i].geocodeAddr = geocodeAddr; // 디버그용
         success++;
+      } else {
+        console.warn('좌표 없음:', geocodeAddr);
       }
     } catch(e) {
       console.warn('geocode 실패:', a.address, e);
@@ -2437,11 +2459,8 @@ async function geocodeAll() {
     // 실시간 테이블 업데이트
     const row = document.getElementById('addr-row-' + a.idx);
     if (row) {
-      const td = row.querySelectorAll('td')[2];
-      if (td) {
-        const noCoord = td.querySelector('.no-coord');
-        if (noCoord && deliveryAddresses[i].lat) noCoord.remove();
-      }
+      const noCoord = row.querySelector('.no-coord');
+      if (noCoord && deliveryAddresses[i].lat) noCoord.remove();
     }
     // Nominatim rate limit: 1 req/sec
     if (i < deliveryAddresses.length - 1) await new Promise(r => setTimeout(r, 1100));

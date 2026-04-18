@@ -260,7 +260,13 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 <header>
   <div class="logo">
     <div class="logo-mark">바</div>
-    <div><div class="logo-text">바비야기 수원점</div><div class="logo-sub">운영 관리 시스템</div></div>
+    <div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="logo-text">바비야기 수원점</div>
+        <span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;background:var(--adim);padding:1px 5px;border-radius:4px">v1.6</span>
+      </div>
+      <div class="logo-sub">운영 관리 시스템</div>
+    </div>
   </div>
   <div style="display:flex;align-items:center;gap:10px">
     <div class="hdate" id="hdate"></div>
@@ -355,7 +361,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem;flex-wrap:wrap;gap:8px">
     <div style="font-size:15px;font-weight:500">📦 주문 관리
       <span id="ord-total-badge" style="font-size:12px;color:var(--t3);font-weight:400;margin-left:6px"></span>
-      <span id="sync-badge" style="font-size:10px;padding:1px 7px;border-radius:8px;margin-left:6px;font-weight:500"></span>
+      <span id="sync-badge" style="font-size:10px;padding:1px 7px;border-radius:8px;margin-left:6px;font-weight:500;cursor:pointer" onclick="manualSync()" title="클릭하여 새로고침"></span>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="btn btn-sm" onclick="openImportModal()">+ 엑셀 추가</button>
@@ -1099,15 +1105,21 @@ function buildOrders(rows) {
     count: toAdd.length
   });
 
-  saveOrdersToStorage();
   closeImportModal();
-  renderOrdersUI();
-  // DB에 비동기 저장
-  insertOrdersToDB(toAdd, importId, fname).then(() => renderImportHistory());
   const msg = skipped > 0
     ? `✅ ${toAdd.length}건 추가됨 (중복 ${skipped}건 제외, 전체 ${allOrders.length}건)`
     : `✅ ${toAdd.length}건 추가됨 (전체 ${allOrders.length}건)`;
-  alert(msg);
+  // DB 저장 → 성공 시 DB에서 다시 로드 (단일 진실 공급원)
+  insertOrdersToDB(toAdd, importId, fname).then(async ok => {
+    if (ok) {
+      await loadOrdersFromDB();
+    } else {
+      saveOrdersToStorage();
+    }
+    renderOrdersUI();
+    renderImportHistory();
+    alert(msg);
+  });
 }
 
 function detectSubType(subRaw, prod) {
@@ -1627,19 +1639,26 @@ function setOrdStatusFromModal(status) {
 // localStorage = 오프라인 캐시 / Supabase = 단일 진실 공급원
 // ============================================================
 
-function setSyncBadge(state) {
+function setSyncBadge(state, detail) {
   const el = document.getElementById('sync-badge');
   if (!el) return;
   const map = {
-    syncing: ['🔄 동기화 중', 'var(--bdim)', 'var(--blue)'],
-    ok:      ['☁️ 동기화됨',  'var(--gdim)', 'var(--green)'],
-    offline: ['💾 로컬 저장', 'var(--adim)', 'var(--accent)'],
-    error:   ['⚠️ 오류',      'var(--rdim)', 'var(--red)'],
+    syncing: ['🔄 동기화 중...', 'var(--bdim)', 'var(--blue)'],
+    ok:      ['☁️ 동기화됨',     'var(--gdim)', 'var(--green)'],
+    offline: ['💾 로컬 저장',    'var(--adim)', 'var(--accent)'],
+    error:   ['⚠️ DB오류',       'var(--rdim)', 'var(--red)'],
   };
   const [text, bg, color] = map[state] || map.offline;
-  el.textContent = text;
+  el.textContent = detail ? text + ': ' + detail : text;
   el.style.background = bg;
   el.style.color = color;
+  el.title = state === 'ok' ? '클릭하여 새로고침' : (detail || '');
+}
+
+// 수동 새로고침 (sync badge 클릭)
+async function manualSync() {
+  const ok = await loadOrdersFromDB();
+  if (ok) renderOrdersUI();
 }
 
 // DB에서 전체 주문 로드
@@ -1660,28 +1679,34 @@ async function loadOrdersFromDB() {
     setSyncBadge('ok');
     return true;
   } catch(e) {
-    console.warn('DB 로드 실패, 로컬 캐시 사용:', e);
-    setSyncBadge('offline');
+    const detail = (e.message || e.code || '').substring(0, 50);
+    console.warn('DB 로드 실패:', e);
+    setSyncBadge('error', detail || 'DB 로드 실패');
     return false;
   }
 }
 
-// 신규 주문 배열을 DB에 upsert (기존 id 있으면 무시 - onConflict ignore)
+// 신규 주문 배열을 DB에 저장 (id 충돌 시 무시)
 async function insertOrdersToDB(orders, importId, filename) {
+  if (!orders || orders.length === 0) return true;
   try {
     setSyncBadge('syncing');
     const rows = orders.map(o => orderToDbRow(o));
-    // id 충돌 시 무시 (기존 데이터 우선)
     const { error } = await _sb.from('orders').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
-    if (error) throw error;
-
-    await _sb.from('import_history').insert({
-      id: importId, filename, count: orders.length
-    });
+    if (error) {
+      // 에러 상세를 뱃지에 표시
+      setSyncBadge('error', (error.message||error.code||'').substring(0,50));
+      console.error('DB 저장 에러:', error);
+      throw error;
+    }
+    // import_history는 실패해도 주문 저장에 영향 없음
+    await _sb.from('import_history')
+      .upsert({ id: importId, filename, count: orders.length }, { onConflict: 'id', ignoreDuplicates: true })
+      .catch(e => console.warn('import_history 무시:', e));
     setSyncBadge('ok');
     return true;
   } catch(e) {
-    console.warn('DB 저장 실패:', e);
+    console.error('DB 저장 실패:', e);
     setSyncBadge('offline');
     return false;
   }

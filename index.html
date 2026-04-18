@@ -263,7 +263,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
     <div>
       <div style="display:flex;align-items:center;gap:6px">
         <div class="logo-text">바비야기 수원점</div>
-        <span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;background:var(--adim);padding:1px 5px;border-radius:4px">v1.8.2</span>
+        <span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;background:var(--adim);padding:1px 5px;border-radius:4px">v1.9</span>
       </div>
       <div class="logo-sub">운영 관리 시스템</div>
     </div>
@@ -574,6 +574,15 @@ tr:hover td{background:rgba(255,255,255,0.015)}
       </div>
 
     </div>
+  </div>
+</div>
+
+
+<!-- 위치 확인/수정 모달 -->
+<div id="loc-modal" style="display:none;position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.6);backdrop-filter:blur(3px)" onclick="closeLocModal(event)">
+  <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:16px;max-width:420px;margin:3rem auto;padding:1.5rem;position:relative" onclick="event.stopPropagation()">
+    <button onclick="closeLocModal()" style="position:absolute;top:1rem;right:1rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t2);cursor:pointer;padding:4px 10px;font-size:13px">✕</button>
+    <div id="loc-modal-content"></div>
   </div>
 </div>
 
@@ -2449,6 +2458,13 @@ async function extractAddresses() {
     await geocodeAll();
     renderAddrTable();
     _buildKakaoMap(deliveryAddresses.filter(a => a.lat && a.lng));
+    // 변환 완료 후 위치 확인 인터락 시작
+    setTimeout(() => {
+      promptLocConfirm();
+      // 첫 번째 주소부터 확인 모달 자동 열기
+      const first = deliveryAddresses.find(a => !a.locConfirmed);
+      if (first) first.lat ? openLocConfirm(first.idx) : openLocEdit(first.idx);
+    }, 500);
 
   } catch(e) {
     console.error('주소 추출 실패:', e);
@@ -2496,9 +2512,9 @@ function keywordSearchOne(ps, keyword) {
   });
 }
 
-// 전체 주소 병렬 변환
-// 1차: addressSearch(도로명+번지)
-// 2차: keywordSearch(아파트명 + 시)  ← 핵심 수정
+// 전체 주소 좌표 변환
+// 전략: 아파트명 있으면 keywordSearch 우선 (addressSearch DB 오류 방지)
+//       아파트명 없으면 addressSearch 사용
 async function geocodeAll() {
   const statusEl = document.getElementById('extract-status');
   statusEl.textContent = `📍 ${deliveryAddresses.length}개 주소 좌표 변환 중...`;
@@ -2506,31 +2522,37 @@ async function geocodeAll() {
   const geocoder = new kakao.maps.services.Geocoder();
   const ps = new kakao.maps.services.Places();
 
-  // 1차: addressSearch 병렬
-  const results1 = await Promise.all(
-    deliveryAddresses.map(a => geocodeOne(geocoder, a.address))
-  );
+  // 각 주소에 맞는 최적 검색 방식 선택
+  const results = await Promise.all(
+    deliveryAddresses.map(a => {
+      const apt = extractAptName(a.address);
+      const cityM = a.address.match(/수원시|화성시|용인시|성남시|안양시|평택시/);
+      const city = cityM ? cityM[0] : '수원';
 
-  // 2차: 실패한 것만 keywordSearch(아파트명)로 재시도
-  const results2 = await Promise.all(
-    results1.map((r, i) => {
-      if (r) return Promise.resolve(r);
-      const apt = extractAptName(deliveryAddresses[i].address);
-      if (!apt) return Promise.resolve(null);
-      const cityM = deliveryAddresses[i].address.match(/수원시|화성시|용인시|성남시/);
-      const keyword = apt + (cityM ? ' ' + cityM[0] : ' 수원');
-      return keywordSearchOne(ps, keyword);
+      if (apt) {
+        // 아파트명 있으면 keywordSearch 우선
+        // (addressSearch는 카카오 DB 오류로 잘못된 위치 반환할 수 있음)
+        const keyword = apt + ' ' + city;
+        return keywordSearchOne(ps, keyword).then(r => {
+          if (r) return r;
+          // keywordSearch 실패 시 addressSearch fallback
+          return geocodeOne(geocoder, a.address);
+        });
+      } else {
+        // 아파트명 없으면 addressSearch
+        return geocodeOne(geocoder, a.address);
+      }
     })
   );
 
   let success = 0;
-  results2.forEach((r, i) => {
+  results.forEach((r, i) => {
     if (r) {
       deliveryAddresses[i].lat = r.lat;
       deliveryAddresses[i].lng = r.lng;
       success++;
     } else {
-      console.warn('최종 실패:', deliveryAddresses[i].address);
+      console.warn('좌표 변환 실패:', deliveryAddresses[i].address);
     }
   });
 
@@ -2544,25 +2566,44 @@ function renderAddrTable() {
   const count = document.getElementById('addr-count');
   if (count) count.textContent = `(${deliveryAddresses.length}개)`;
 
-  list.innerHTML = deliveryAddresses.map(a => `
+  list.innerHTML = deliveryAddresses.map(a => {
+    // 위치 상태 배지
+    let locBadge;
+    if (!a.lat) {
+      locBadge = `<button onclick="event.stopPropagation();openLocEdit(${a.idx})"
+        style="font-size:10px;padding:1px 7px;border-radius:8px;border:1px solid var(--red);background:var(--rdim);color:var(--red);cursor:pointer;white-space:nowrap;flex-shrink:0">
+        ❌ 변환실패 · 수정
+      </button>`;
+    } else if (a.locConfirmed) {
+      locBadge = `<span style="font-size:10px;padding:1px 7px;border-radius:8px;background:var(--gdim);color:var(--green);white-space:nowrap;flex-shrink:0">✅ 확인됨</span>`;
+    } else {
+      locBadge = `<button onclick="event.stopPropagation();openLocConfirm(${a.idx})"
+        style="font-size:10px;padding:1px 7px;border-radius:8px;border:1px solid var(--accent);background:var(--adim);color:var(--accent);cursor:pointer;white-space:nowrap;flex-shrink:0">
+        📍 위치 확인
+      </button>`;
+    }
+    return `
     <div id="addr-row-${a.idx}"
       style="display:flex;align-items:flex-start;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s"
       onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''"
       onclick="onAddrRowClick(event,${a.idx})">
-      <input type="checkbox" id="chk-${a.idx}" checked
-        style="width:15px;height:15px;margin-top:2px;accent-color:var(--accent);cursor:pointer;flex-shrink:0"
+      <input type="checkbox" id="chk-${a.idx}" ${a.lat ? 'checked' : ''}
+        style="width:15px;height:15px;margin-top:3px;accent-color:var(--accent);cursor:pointer;flex-shrink:0"
         onchange="updateChkCount()">
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <span style="font-size:13px;font-weight:600">${a.name||'-'}</span>
           ${a.menu ? `<span style="font-size:11px;background:var(--adim);color:var(--accent);padding:1px 6px;border-radius:8px">${a.menu}</span>` : ''}
-          ${a.lat ? '' : '<span class="no-coord" style="font-size:10px;color:var(--accent)">⏳</span>'}
         </div>
         <div style="font-size:11px;color:var(--t3);margin-top:2px;line-height:1.4">${a.address}</div>
         ${a.memo ? `<div style="font-size:11px;color:var(--accent);margin-top:2px">🔑 ${a.memo}</div>` : ''}
       </div>
-      <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--t3);flex-shrink:0;margin-top:2px">${a.idx}</span>
-    </div>`).join('');
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
+        <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--t3)">${a.idx}</span>
+        ${locBadge}
+      </div>
+    </div>`;
+  }).join('');
 
   updateChkCount();
 }
@@ -2773,6 +2814,12 @@ async function calcRoute() {
   const valid = getCheckedAddresses();
   if (valid.length === 0) { alert('경로에 포함할 주소를 선택해주세요.'); return; }
   if (valid.length > 15) { alert('최적 경로 계산은 최대 15개까지 가능합니다.'); return; }
+  // 미확인 주소가 있으면 경고
+  const unconfirmed = valid.filter(a => !a.locConfirmed);
+  if (unconfirmed.length > 0) {
+    const names = unconfirmed.map(a => a.name).join(', ');
+    if (!confirm(`⚠️ 위치 미확인 주소가 ${unconfirmed.length}개 있습니다:\n${names}\n\n위치 확인 없이 경로를 계산하시겠습니까?`)) return;
+  }
 
   const btn = document.getElementById('route-btn');
   btn.disabled = true;
@@ -2879,6 +2926,193 @@ function drawRouteOnMap(geoJson, orderedPts) {
   const bounds = new kakao.maps.LatLngBounds();
   path.forEach(p => bounds.extend(p));
   kakaoMapInstance.setBounds(bounds);
+}
+
+
+// ===================== 위치 확인 인터락 =====================
+let currentLocIdx = null;
+
+// geocodeAll 완료 후 확인이 필요한 주소들 처리
+function promptLocConfirm() {
+  const needConfirm = deliveryAddresses.filter(a => a.lat && !a.locConfirmed);
+  const failed      = deliveryAddresses.filter(a => !a.lat);
+  const statusEl    = document.getElementById('extract-status');
+
+  if (failed.length > 0) {
+    statusEl.textContent = `⚠️ ${failed.length}개 변환 실패 · ${needConfirm.length}개 위치 확인 필요`;
+    statusEl.style.color = 'var(--red)';
+  } else if (needConfirm.length > 0) {
+    statusEl.textContent = `📍 ${needConfirm.length}개 위치를 지도에서 확인해주세요`;
+    statusEl.style.color = 'var(--accent)';
+  } else {
+    statusEl.textContent = `✅ 모든 위치 확인 완료`;
+    statusEl.style.color = 'var(--green)';
+  }
+}
+
+// 위치 확인 모달 (성공했지만 확인 필요)
+function openLocConfirm(idx) {
+  const a = deliveryAddresses.find(x => x.idx === idx);
+  if (!a) return;
+  currentLocIdx = idx;
+
+  // 지도에서 해당 마커로 이동
+  focusMarker(idx);
+
+  document.getElementById('loc-modal-content').innerHTML = `
+    <div style="font-size:15px;font-weight:700;margin-bottom:.5rem">📍 위치 확인</div>
+    <div style="font-size:13px;font-weight:600;margin-bottom:3px">${a.name}</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:1rem;line-height:1.5">${a.address}</div>
+    <div style="font-size:13px;color:var(--t2);background:var(--bg3);padding:.75rem;border-radius:var(--rsm);margin-bottom:1rem;border-left:3px solid var(--accent)">
+      지도의 핀 위치가 실제 배송지와 일치하나요?<br>
+      <span style="font-size:11px;color:var(--t3)">지도를 보며 확인 후 선택해주세요</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="confirmLoc(${idx}, true)" class="btn btn-a" style="flex:1;justify-content:center">✅ 맞습니다</button>
+      <button onclick="confirmLoc(${idx}, false)" class="btn" style="flex:1;justify-content:center;border-color:var(--accent);color:var(--accent)">✏️ 위치 수정</button>
+    </div>`;
+
+  document.getElementById('loc-modal').style.display = 'block';
+}
+
+// 위치 수정 모달 (실패 or 사용자가 틀렸다고 한 경우)
+function openLocEdit(idx) {
+  const a = deliveryAddresses.find(x => x.idx === idx);
+  if (!a) return;
+  currentLocIdx = idx;
+
+  const apt = extractAptName(a.address) || '';
+  const defaultSearch = apt || a.address.split(' ').slice(0, 5).join(' ');
+
+  document.getElementById('loc-modal-content').innerHTML = `
+    <div style="font-size:15px;font-weight:700;margin-bottom:.5rem">✏️ 위치 수정</div>
+    <div style="font-size:13px;font-weight:600;margin-bottom:3px">${a.name}</div>
+    <div style="font-size:12px;color:var(--t3);margin-bottom:1rem;line-height:1.5">${a.address}</div>
+    <div style="margin-bottom:.75rem">
+      <div style="font-size:11px;color:var(--t3);margin-bottom:5px">검색어 (아파트명, 건물명, 또는 주소)</div>
+      <input id="loc-search-input" type="text" value="${defaultSearch}"
+        style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rsm);padding:8px 12px;color:var(--text);font-size:13px;font-family:'Noto Sans KR',sans-serif;outline:none;box-sizing:border-box"
+        onkeydown="if(event.key==='Enter') searchLocEdit()">
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:.75rem">
+      <button onclick="searchLocEdit()" class="btn btn-a" style="flex:1;justify-content:center">🔍 검색</button>
+    </div>
+    <div id="loc-search-results" style="max-height:200px;overflow-y:auto"></div>`;
+
+  document.getElementById('loc-modal').style.display = 'block';
+  setTimeout(() => document.getElementById('loc-search-input').focus(), 100);
+}
+
+// 위치 확인/거부 처리
+function confirmLoc(idx, confirmed) {
+  const a = deliveryAddresses.find(x => x.idx === idx);
+  if (!a) return;
+
+  if (confirmed) {
+    a.locConfirmed = true;
+    renderAddrTable();
+    closeLocModal();
+    promptLocConfirm();
+    // 다음 미확인 주소로 자동 이동
+    const nextUnconfirmed = deliveryAddresses.find(x => x.lat && !x.locConfirmed);
+    if (nextUnconfirmed) {
+      setTimeout(() => openLocConfirm(nextUnconfirmed.idx), 300);
+    }
+  } else {
+    // 수정 모드로 전환
+    openLocEdit(idx);
+  }
+}
+
+// 위치 검색
+async function searchLocEdit() {
+  const input = document.getElementById('loc-search-input');
+  const keyword = input.value.trim();
+  if (!keyword) return;
+
+  const resultsEl = document.getElementById('loc-search-results');
+  resultsEl.innerHTML = '<div style="font-size:12px;color:var(--t3);padding:8px">검색 중...</div>';
+
+  const ps = new kakao.maps.services.Places();
+  ps.keywordSearch(keyword, (result, status) => {
+    if (status !== kakao.maps.services.Status.OK || !result.length) {
+      resultsEl.innerHTML = '<div style="font-size:12px;color:var(--red);padding:8px">검색 결과가 없습니다. 다른 검색어를 입력해주세요.</div>';
+      return;
+    }
+    resultsEl.innerHTML = result.slice(0, 5).map((r, i) => `
+      <div onclick="applyLocResult(${parseFloat(r.y)}, ${parseFloat(r.x)}, '${r.place_name.replace(/'/g,"\'")}', '${r.address_name.replace(/'/g,"\'")}', this)"
+        style="padding:8px 10px;border-radius:var(--rsm);cursor:pointer;border:1px solid var(--border);margin-bottom:6px;transition:border-color .15s"
+        onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:13px;font-weight:600">${r.place_name}</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:2px">${r.address_name}</div>
+        ${r.road_address_name ? `<div style="font-size:11px;color:var(--t3)">${r.road_address_name}</div>` : ''}
+      </div>`).join('');
+  });
+}
+
+// 검색 결과 선택 → 좌표 적용
+function applyLocResult(lat, lng, placeName, addrName, el) {
+  const a = deliveryAddresses.find(x => x.idx === currentLocIdx);
+  if (!a) return;
+
+  // 선택 하이라이트
+  document.querySelectorAll('#loc-search-results > div').forEach(d => d.style.background = '');
+  el.style.background = 'var(--adim)';
+  el.style.borderColor = 'var(--accent)';
+
+  // 좌표 업데이트
+  a.lat = lat;
+  a.lng = lng;
+  a.locConfirmed = true;
+
+  // 지도 마커 업데이트
+  if (kakaoMapInstance) {
+    const pos = new kakao.maps.LatLng(lat, lng);
+    const found = leafletMarkers.find(m => m.idx === a.idx);
+    if (found) {
+      found.marker.setPosition(pos);
+      found.pos = pos;
+      if (found.numOverlay) found.numOverlay.setPosition(pos);
+    } else {
+      // 새 마커 추가 (변환 실패 후 수정된 경우)
+      const iwContent = `<div style="padding:10px 12px;min-width:180px;font-size:13px">
+        <div style="font-weight:700;margin-bottom:3px">${a.idx}. ${a.name}</div>
+        <div style="font-size:11px;color:#666">${a.address}</div>
+        ${a.memo ? `<div style="font-size:11px;color:#e8a045;margin-top:2px">🔑 ${a.memo}</div>` : ''}
+      </div>`;
+      const infoWindow = new kakao.maps.InfoWindow({ content: iwContent, removable: true });
+      const marker = new kakao.maps.Marker({ position: pos, map: kakaoMapInstance });
+      const numOverlay = new kakao.maps.CustomOverlay({
+        position: pos,
+        content: `<div id="num-overlay-${a.idx}" style="background:#e8a045;color:#1a1814;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);margin-top:-52px;margin-left:2px;pointer-events:none">${a.idx}</div>`,
+        zIndex: 5,
+      });
+      numOverlay.setMap(kakaoMapInstance);
+      kakao.maps.event.addListener(marker, 'click', () => {
+        leafletMarkers.forEach(m => m.iw.close());
+        infoWindow.open(kakaoMapInstance, marker);
+      });
+      leafletMarkers.push({ idx: a.idx, marker, iw: infoWindow, numOverlay, pos });
+    }
+    kakaoMapInstance.panTo(pos);
+    kakaoMapInstance.setLevel(3);
+  }
+
+  renderAddrTable();
+
+  // 모달 닫기 + 다음 미확인으로
+  setTimeout(() => {
+    closeLocModal();
+    promptLocConfirm();
+    const next = deliveryAddresses.find(x => !x.locConfirmed);
+    if (next) setTimeout(() => next.lat ? openLocConfirm(next.idx) : openLocEdit(next.idx), 300);
+  }, 400);
+}
+
+function closeLocModal(e) {
+  if (e && e.target !== document.getElementById('loc-modal')) return;
+  document.getElementById('loc-modal').style.display = 'none';
+  currentLocIdx = null;
 }
 
 function copyAddresses() {

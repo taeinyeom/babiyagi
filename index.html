@@ -263,7 +263,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
     <div>
       <div style="display:flex;align-items:center;gap:6px">
         <div class="logo-text">바비야기 수원점</div>
-        <span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;background:var(--adim);padding:1px 5px;border-radius:4px">v1.6</span>
+        <span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;background:var(--adim);padding:1px 5px;border-radius:4px">v1.7</span>
       </div>
       <div class="logo-sub">운영 관리 시스템</div>
     </div>
@@ -527,7 +527,8 @@ tr:hover td{background:rgba(255,255,255,0.015)}
     <div class="card">
       <div class="card-hd">
         <div class="card-title">📋 추출된 주소 목록</div>
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-sm btn-a" onclick="calcRoute()" id="route-btn">🚗 최적 경로 계산</button>
           <button class="btn btn-sm" onclick="copyAddresses()">📋 복사</button>
           <span id="addr-count" style="font-size:12px;color:var(--t3);align-self:center"></span>
         </div>
@@ -548,13 +549,22 @@ tr:hover td{background:rgba(255,255,255,0.015)}
       </div>
     </div>
 
+    <!-- 경로 결과 -->
+    <div id="route-result" style="display:none" class="card">
+      <div class="card-hd">
+        <div class="card-title">🚗 최적 배송 경로</div>
+        <div id="route-summary" style="font-size:12px;color:var(--t3)"></div>
+      </div>
+      <div id="route-steps" style="font-size:13px;line-height:1.8"></div>
+    </div>
+
     <!-- 지도 -->
     <div class="card">
       <div class="card-hd">
         <div class="card-title">🗺️ 지도</div>
         <div style="font-size:11px;color:var(--t3)">핀을 클릭하면 상세정보가 표시됩니다</div>
       </div>
-      <div id="delivery-map" style="width:100%;height:480px;border-radius:var(--rsm);background:var(--bg3);position:relative;overflow:hidden">
+      <div id="delivery-map" style="width:100%;height:520px;border-radius:var(--rsm);background:var(--bg3);position:relative;overflow:hidden">
         <div id="map-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:13px">
           주소 추출 후 지도가 표시됩니다
         </div>
@@ -2663,6 +2673,117 @@ function focusMarker(idx) {
     const row = document.getElementById('addr-row-' + idx);
     if (row) { row.style.background = 'rgba(232,160,69,.15)'; row.scrollIntoView({behavior:'smooth',block:'nearest'}); }
   }
+}
+
+
+// ===================== 최적 경로 계산 (OSRM) =====================
+// 바비야기 수원점 (출발지 고정)
+const ORIGIN = { lat: 37.25702, lng: 126.97269, name: '🏪 바비야기 수원점' };
+let routePolyline = null;  // 지도에 그린 경로선
+
+async function calcRoute() {
+  const valid = deliveryAddresses.filter(a => a.lat && a.lng);
+  if (valid.length === 0) { alert('좌표 변환된 주소가 없습니다. 먼저 주소를 추출해주세요.'); return; }
+  if (valid.length > 15) { alert('최적 경로 계산은 최대 15개까지 가능합니다.'); return; }
+
+  const btn = document.getElementById('route-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ 계산 중...';
+
+  try {
+    // 출발지 + 배송지 좌표
+    const allPts = [ORIGIN, ...valid];
+    const coordStr = allPts.map(p => `${p.lng},${p.lat}`).join(';');
+    const url = `https://router.project-osrm.org/trip/v1/driving/${coordStr}` +
+      `?source=first&roundtrip=false&steps=false&geometries=geojson&overview=full`;
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`OSRM 응답 오류: ${res.status}`);
+    const data = await res.json();
+    if (data.code !== 'Ok') throw new Error('경로 계산 실패: ' + data.code);
+
+    // waypoints[i].waypoint_index = i번째 포인트의 trip 내 방문 순서
+    // → waypoint_index 기준으로 정렬해 방문 순서 복원
+    const sorted = [...data.waypoints].sort((a, b) => a.waypoint_index - b.waypoint_index);
+    const orderedPts = sorted.map(wp => allPts[data.waypoints.indexOf(wp)]);
+
+    // 실제로 OSRM은 waypoints 배열의 i번째 = 원본 i번째 포인트의 정보
+    // waypoint_index = trip에서 몇 번째로 방문하는지
+    const visitOrder = new Array(allPts.length);
+    data.waypoints.forEach((wp, originalIdx) => {
+      visitOrder[wp.waypoint_index] = allPts[originalIdx];
+    });
+
+    const dist  = (data.trips[0].distance / 1000).toFixed(1);
+    const dur   = Math.round(data.trips[0].duration / 60);
+    const geo   = data.trips[0].geometry; // GeoJSON LineString
+
+    // 결과 표시
+    renderRouteResult(visitOrder.filter(Boolean), dist, dur);
+    drawRouteOnMap(geo, visitOrder.filter(Boolean));
+
+  } catch(e) {
+    console.error('경로 계산 실패:', e);
+    alert('경로 계산 실패: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🚗 최적 경로 계산';
+  }
+}
+
+function renderRouteResult(orderedPts, dist, dur) {
+  document.getElementById('route-result').style.display = 'block';
+  document.getElementById('route-summary').textContent =
+    `총 거리 ${dist}km · 예상 시간 ${dur}분 (${orderedPts.length}개 배송지)`;
+
+  const steps = orderedPts.map((p, i) => {
+    const isOrigin = i === 0;
+    const isLast   = i === orderedPts.length - 1;
+    const icon = isOrigin ? '🏪' : '📦';
+    const color = isOrigin ? 'var(--blue)' : 'var(--text)';
+    const num = isOrigin ? '' : `<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--accent);color:#1a1814;font-size:11px;font-weight:700;margin-right:6px;flex-shrink:0">${i}</span>`;
+    return `<div style="display:flex;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border);gap:6px">
+      ${isOrigin ? `<span style="font-size:18px;margin-right:4px">${icon}</span>` : num}
+      <div style="flex:1">
+        <div style="font-weight:600;color:${color}">${p.name || p.address.split(' ').slice(-2).join(' ')}</div>
+        ${!isOrigin ? `<div style="font-size:11px;color:var(--t3);margin-top:1px">${p.address}</div>` : ''}
+        ${!isOrigin && p.memo ? `<div style="font-size:11px;color:var(--accent);margin-top:1px">🔑 ${p.memo}</div>` : ''}
+      </div>
+      ${i < orderedPts.length - 1 ? '<div style="font-size:18px;color:var(--t3);margin-left:auto">↓</div>' : ''}
+    </div>`;
+  }).join('');
+
+  document.getElementById('route-steps').innerHTML = steps;
+}
+
+function drawRouteOnMap(geoJson, orderedPts) {
+  if (!kakaoMapInstance) return;
+
+  // 기존 경로선 제거
+  if (routePolyline) { routePolyline.setMap(null); routePolyline = null; }
+
+  // GeoJSON LineString → 카카오 LatLng 배열
+  const path = geoJson.coordinates.map(([lng, lat]) => new kakao.maps.LatLng(lat, lng));
+
+  routePolyline = new kakao.maps.Polyline({
+    path,
+    strokeWeight: 4,
+    strokeColor: '#4a9ced',
+    strokeOpacity: 0.85,
+    strokeStyle: 'solid',
+  });
+  routePolyline.setMap(kakaoMapInstance);
+
+  // 마커를 방문 순서 번호로 업데이트
+  leafletMarkers.forEach(m => {
+    const orderIdx = orderedPts.findIndex(p => p === deliveryAddresses.find(a => a.idx === m.idx));
+    // 번호 오버레이는 이미 표시됨 — 경로선만 추가
+  });
+
+  // 전체 경로 보이도록 bounds 재설정
+  const bounds = new kakao.maps.LatLngBounds();
+  path.forEach(p => bounds.extend(p));
+  kakaoMapInstance.setBounds(bounds);
 }
 
 function copyAddresses() {

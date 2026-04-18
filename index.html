@@ -263,7 +263,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
     <div>
       <div style="display:flex;align-items:center;gap:6px">
         <div class="logo-text">바비야기 수원점</div>
-        <span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;background:var(--adim);padding:1px 5px;border-radius:4px">v1.9.2</span>
+        <span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;background:var(--adim);padding:1px 5px;border-radius:4px">v1.9.3</span>
       </div>
       <div class="logo-sub">운영 관리 시스템</div>
     </div>
@@ -2595,7 +2595,7 @@ function renderAddrTable() {
           ${a.memo ? `<div style="font-size:11px;color:var(--accent);margin-top:2px">🔑 ${a.memo}</div>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
-          <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--t3)">${a.idx}</span>
+          <div style="width:20px;height:20px;border-radius:50%;background:var(--adim);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:'DM Mono',monospace;flex-shrink:0">${a.idx}</div>
           ${locBadge}
         </div>
       </div>
@@ -2736,11 +2736,11 @@ function _buildKakaoMap(valid) {
     const pos = new kakao.maps.LatLng(a.lat, a.lng);
     bounds.extend(pos);
 
-    const iwContent = `<div style="padding:10px 12px;min-width:180px;max-width:240px;font-size:13px;line-height:1.6">
-      <div style="font-weight:700;margin-bottom:3px">${a.idx}. ${a.name}</div>
-      <div style="font-size:11px;color:#666;margin-bottom:3px">${a.address}</div>
+    const iwContent = `<div style="padding:10px 12px;min-width:180px;max-width:240px;font-size:13px;line-height:1.6;background:#fff;color:#111">
+      <div style="font-weight:700;margin-bottom:4px;color:#111;font-size:14px">${a.idx}. ${a.name}</div>
+      <div style="font-size:11px;color:#555;margin-bottom:3px">${a.address}</div>
       ${a.menu ? `<div style="font-size:11px;color:#e8a045;margin-bottom:3px">🥘 ${a.menu}</div>` : ''}
-      ${a.memo ? `<div style="font-size:11px;background:#f5f5f5;padding:2px 5px;border-radius:3px;margin-bottom:3px">🔑 ${a.memo}</div>` : ''}
+      ${a.memo ? `<div style="font-size:11px;background:#f5f5f5;padding:2px 5px;border-radius:3px;margin-bottom:3px;color:#333">🔑 ${a.memo}</div>` : ''}
     </div>`;
 
     const infoWindow = new kakao.maps.InfoWindow({ content: iwContent, removable: true });
@@ -2824,12 +2824,7 @@ async function calcRoute() {
   const valid = getCheckedAddresses();
   if (valid.length === 0) { alert('경로에 포함할 주소를 선택해주세요.'); return; }
   if (valid.length > 15) { alert('최적 경로 계산은 최대 15개까지 가능합니다.'); return; }
-  // 미확인 주소가 있으면 경고
-  const unconfirmed = valid.filter(a => !a.locConfirmed);
-  if (unconfirmed.length > 0) {
-    const names = unconfirmed.map(a => a.name).join(', ');
-    if (!confirm(`⚠️ 위치 미확인 주소가 ${unconfirmed.length}개 있습니다:\n${names}\n\n위치 확인 없이 경로를 계산하시겠습니까?`)) return;
-  }
+
 
   const btn = document.getElementById('route-btn');
   btn.disabled = true;
@@ -3075,38 +3070,86 @@ function printRoute() {
   const steps   = document.getElementById('route-steps').innerHTML;
   const today   = new Date().toLocaleDateString('ko-KR', {year:'numeric', month:'long', day:'numeric', weekday:'short'});
 
+  // 카카오 Static Map으로 경로 이미지 생성
+  let mapImgHtml = '';
+  if (kakaoMapInstance && routePolyline) {
+    try {
+      // 현재 지도 중심/레벨로 Static Map URL 생성
+      const center = kakaoMapInstance.getCenter();
+      const level  = kakaoMapInstance.getLevel();
+      const lat    = center.getLat().toFixed(6);
+      const lng    = center.getLng().toFixed(6);
+      // 마커 좌표 목록 (방문 순서대로)
+      const markerParams = leafletMarkers
+        .map(m => `${m.pos.getLng().toFixed(6)},${m.pos.getLat().toFixed(6)}`)
+        .join('|');
+      const staticUrl = `https://spi.maps.daum.net/map/staticmap/staticmap.png`
+        + `?appkey=${KAKAO_JS_KEY}&center=${lng},${lat}&level=${level}&w=720&h=400`
+        + `&markers=type:t|size:mid|color:orange|pos:${markerParams}`;
+      mapImgHtml = `<img src="${staticUrl}" style="width:100%;max-width:720px;border-radius:8px;margin-bottom:20px;border:1px solid #ddd" alt="배송 경로 지도" onerror="this.style.display='none'">`;
+    } catch(e) {
+      console.warn('지도 이미지 생성 실패:', e);
+    }
+  }
+
+  // 지도가 없으면 canvas로 캡처 시도
+  if (!mapImgHtml && kakaoMapInstance) {
+    const mapEl = document.getElementById('delivery-map');
+    const rect = mapEl.getBoundingClientRect();
+    // 현재 지도를 data URL로 캡처 (카카오 지도는 canvas 직접 캡처 불가)
+    // → 대신 지도 링크 표시
+    const center = kakaoMapInstance.getCenter();
+    const kakaoMapLink = `https://map.kakao.com/link/map/${center.getLat()},${center.getLng()}`;
+    mapImgHtml = `<div style="background:#f5f5f5;border-radius:8px;padding:20px;text-align:center;margin-bottom:20px;color:#555;border:1px solid #ddd">
+      🗺️ 지도 이미지는 인쇄 시 카카오맵에서 직접 캡처하거나
+      <a href="${kakaoMapLink}" target="_blank" style="color:#4a9ced">카카오맵에서 확인</a>하세요.
+    </div>`;
+  }
+
   const w = window.open('', '_blank');
   w.document.write(`<!DOCTYPE html><html lang="ko"><head>
     <meta charset="UTF-8">
     <title>배송 경로 — 바비야기 수원점</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-      body { font-family: 'Noto Sans KR', sans-serif; margin: 32px; color: #111; font-size: 13px; line-height: 1.6; }
-      h2 { font-size: 17px; margin-bottom: 4px; }
-      .meta { font-size: 11px; color: #888; margin-bottom: 20px; }
+      * { box-sizing: border-box; }
+      body { font-family: 'Noto Sans KR', sans-serif; margin: 28px; color: #111; font-size: 13px; line-height: 1.6; max-width: 780px; }
+      h2 { font-size: 18px; margin: 0 0 4px; }
+      .meta { font-size: 11px; color: #888; margin-bottom: 16px; }
       .summary { display: inline-block; font-size: 12px; background: #e8f5e9; color: #2e7d32;
-                 padding: 3px 10px; border-radius: 10px; margin-bottom: 16px; font-family: monospace; }
-      .step { display: flex; gap: 10px; align-items: stretch; }
-      .step-icon { display: flex; flex-direction: column; align-items: center; gap: 0; }
-      .circle { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center;
-                justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; color: #fff; }
-      .origin { background: #4a9ced; }
-      .stop   { background: #e8a045; color: #1a1814; }
-      .line   { flex: 1; width: 2px; background: #ddd; margin: 3px auto; min-height: 10px; }
-      .info   { padding: 2px 0 12px 0; flex: 1; }
-      .name   { font-weight: 700; font-size: 13px; }
-      .addr   { font-size: 11px; color: #666; margin-top: 1px; }
-      .memo   { font-size: 11px; color: #e8a045; margin-top: 2px; }
-      @media print { body { margin: 16px; } }
+                 padding: 3px 12px; border-radius: 10px; margin-bottom: 16px; font-family: monospace; font-weight: 600; }
+      .layout { display: flex; gap: 24px; align-items: flex-start; }
+      .map-col { flex: 1; }
+      .route-col { width: 260px; flex-shrink: 0; }
+      .step { display: flex; gap: 8px; align-items: stretch; }
+      .step-icon { display: flex; flex-direction: column; align-items: center; }
+      .circle { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center;
+                justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+      .origin-c { background: #4a9ced; color: #fff; }
+      .stop-c   { background: #e8a045; color: #1a1814; }
+      .line     { flex: 1; width: 2px; background: #e0e0e0; margin: 2px auto; min-height: 8px; }
+      .info     { padding: 1px 0 10px 0; flex: 1; min-width: 0; }
+      .s-name   { font-weight: 700; font-size: 13px; }
+      .s-addr   { font-size: 11px; color: #666; margin-top: 1px; word-break: keep-all; }
+      .s-memo   { font-size: 11px; color: #e8a045; margin-top: 2px; }
+      @media print {
+        body { margin: 12px; }
+        .layout { flex-direction: column; }
+        .route-col { width: 100%; }
+      }
     </style>
   </head><body>
     <h2>🚗 배송 경로 — 바비야기 수원점</h2>
-    <div class="meta">${today} 인쇄</div>
+    <div class="meta">${today}</div>
     <div class="summary">${summary}</div>
-    <div>${steps}</div>
+    <div class="layout">
+      <div class="map-col">${mapImgHtml}</div>
+      <div class="route-col">${steps}</div>
+    </div>
   </body></html>`);
   w.document.close();
   w.focus();
-  setTimeout(() => { w.print(); }, 300);
+  setTimeout(() => { w.print(); }, 600);
 }
 
 function clearDeliveryMap() {

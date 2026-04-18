@@ -263,7 +263,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
     <div>
       <div style="display:flex;align-items:center;gap:6px">
         <div class="logo-text">바비야기 수원점</div>
-        <span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;background:var(--adim);padding:1px 5px;border-radius:4px">v1.9</span>
+        <span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;background:var(--adim);padding:1px 5px;border-radius:4px">v1.9.1</span>
       </div>
       <div class="logo-sub">운영 관리 시스템</div>
     </div>
@@ -2458,13 +2458,8 @@ async function extractAddresses() {
     await geocodeAll();
     renderAddrTable();
     _buildKakaoMap(deliveryAddresses.filter(a => a.lat && a.lng));
-    // 변환 완료 후 위치 확인 인터락 시작
-    setTimeout(() => {
-      promptLocConfirm();
-      // 첫 번째 주소부터 확인 모달 자동 열기
-      const first = deliveryAddresses.find(a => !a.locConfirmed);
-      if (first) first.lat ? openLocConfirm(first.idx) : openLocEdit(first.idx);
-    }, 500);
+    // 변환 완료 후 상태 표시 (모달 자동 오픈 없음 - 사용자가 직접 클릭)
+    setTimeout(() => promptLocConfirm(), 300);
 
   } catch(e) {
     console.error('주소 추출 실패:', e);
@@ -2531,12 +2526,18 @@ async function geocodeAll() {
 
       if (apt) {
         // 아파트명 있으면 keywordSearch 우선
-        // (addressSearch는 카카오 DB 오류로 잘못된 위치 반환할 수 있음)
-        const keyword = apt + ' ' + city;
+        // 동명도 함께 포함해서 정확도 향상 (예: "주공그린빌2단지 매탄동")
+        const dongM = a.address.match(/([가-힣]+동)[,\s)]/);
+        const dong = dongM ? dongM[1] : '';
+        const keyword = apt + (dong ? ' ' + dong : ' ' + city);
         return keywordSearchOne(ps, keyword).then(r => {
           if (r) return r;
-          // keywordSearch 실패 시 addressSearch fallback
-          return geocodeOne(geocoder, a.address);
+          // 동명 포함 실패 시 시 이름으로 재시도
+          return keywordSearchOne(ps, apt + ' ' + city).then(r2 => {
+            if (r2) return r2;
+            // 최종 fallback: addressSearch
+            return geocodeOne(geocoder, a.address);
+          });
         });
       } else {
         // 아파트명 없으면 addressSearch
@@ -3013,11 +3014,7 @@ function confirmLoc(idx, confirmed) {
     renderAddrTable();
     closeLocModal();
     promptLocConfirm();
-    // 다음 미확인 주소로 자동 이동
-    const nextUnconfirmed = deliveryAddresses.find(x => x.lat && !x.locConfirmed);
-    if (nextUnconfirmed) {
-      setTimeout(() => openLocConfirm(nextUnconfirmed.idx), 300);
-    }
+
   } else {
     // 수정 모드로 전환
     openLocEdit(idx);
@@ -3100,12 +3097,9 @@ function applyLocResult(lat, lng, placeName, addrName, el) {
 
   renderAddrTable();
 
-  // 모달 닫기 + 다음 미확인으로
-  setTimeout(() => {
+    setTimeout(() => {
     closeLocModal();
     promptLocConfirm();
-    const next = deliveryAddresses.find(x => !x.locConfirmed);
-    if (next) setTimeout(() => next.lat ? openLocConfirm(next.idx) : openLocEdit(next.idx), 300);
   }, 400);
 }
 

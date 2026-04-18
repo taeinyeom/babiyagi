@@ -2432,41 +2432,56 @@ function geocodeOne(geocoder, query) {
   });
 }
 
-// 전체 주소에서 아파트명 추출 (fallback용)
+// 아파트명 추출 (괄호 안 두번째 항목)
 function extractAptName(fullAddress) {
-  // "(" 안의 텍스트 중 아파트/단지명 추출
-  const m = fullAddress.match(/\(([^,)]+(?:아파트|아파트|힐스테이트|자이|푸르지오|래미안|편한세상|e편한|롯데캐슬|이편한|그린빌|스타클래스|에스클래스|팰리스|클래스|파밀리에|포리엘|포레|라젠느|에듀포레)[^)]*?)\)/);
+  // "(동명, 아파트명)" 에서 아파트명 추출
+  const m = fullAddress.match(/\([^,)]+,\s*([^)]+)\)/);
   if (m) return m[1].trim();
-  // 두번째 시도: 괄호 두번째 내용
-  const m2 = fullAddress.match(/\([^)]+\)\s*\(([^)]+)\)/);
-  if (m2) return m2[1].trim();
+  // 괄호 하나짜리
+  const m2 = fullAddress.match(/\(([^)]{3,})\)/);
+  if (m2 && !/동$|구$|시$/.test(m2[1].trim())) return m2[1].trim();
   return null;
 }
 
-// 전체 주소 병렬 변환 (실패 시 아파트명 fallback)
+// keywordSearch Promise 래핑
+function keywordSearchOne(ps, keyword) {
+  return new Promise(resolve => {
+    ps.keywordSearch(keyword, (result, status) => {
+      if (status === kakao.maps.services.Status.OK && result[0]) {
+        resolve({ lat: parseFloat(result[0].y), lng: parseFloat(result[0].x) });
+      } else {
+        resolve(null);
+      }
+    });
+  });
+}
+
+// 전체 주소 병렬 변환
+// 1차: addressSearch(도로명+번지)
+// 2차: keywordSearch(아파트명 + 시)  ← 핵심 수정
 async function geocodeAll() {
   const statusEl = document.getElementById('extract-status');
   statusEl.textContent = `📍 ${deliveryAddresses.length}개 주소 좌표 변환 중...`;
 
   const geocoder = new kakao.maps.services.Geocoder();
+  const ps = new kakao.maps.services.Places();
 
-  // 1차: 도로명+번지로 병렬 요청
-  const results = await Promise.all(
+  // 1차: addressSearch 병렬
+  const results1 = await Promise.all(
     deliveryAddresses.map(a => geocodeOne(geocoder, a.address))
   );
 
-  // 2차: 실패한 것만 아파트명으로 재시도
-  const retryPromises = results.map((r, i) => {
-    if (r) return Promise.resolve(r);
-    const aptName = extractAptName(deliveryAddresses[i].address);
-    if (aptName) {
-      const city = deliveryAddresses[i].address.match(/경기도 [가-힣]+시/)?.[0] || '수원시';
-      return geocodeOne(geocoder, aptName + ' ' + city);
-    }
-    return Promise.resolve(null);
-  });
-
-  const results2 = await Promise.all(retryPromises);
+  // 2차: 실패한 것만 keywordSearch(아파트명)로 재시도
+  const results2 = await Promise.all(
+    results1.map((r, i) => {
+      if (r) return Promise.resolve(r);
+      const apt = extractAptName(deliveryAddresses[i].address);
+      if (!apt) return Promise.resolve(null);
+      const cityM = deliveryAddresses[i].address.match(/수원시|화성시|용인시|성남시/);
+      const keyword = apt + (cityM ? ' ' + cityM[0] : ' 수원');
+      return keywordSearchOne(ps, keyword);
+    })
+  );
 
   let success = 0;
   results2.forEach((r, i) => {
@@ -2475,7 +2490,7 @@ async function geocodeAll() {
       deliveryAddresses[i].lng = r.lng;
       success++;
     } else {
-      console.warn('좌표 변환 최종 실패:', deliveryAddresses[i].address);
+      console.warn('최종 실패:', deliveryAddresses[i].address);
     }
   });
 

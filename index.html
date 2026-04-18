@@ -263,7 +263,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
     <div>
       <div style="display:flex;align-items:center;gap:6px">
         <div class="logo-text">바비야기 수원점</div>
-        <span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;background:var(--adim);padding:1px 5px;border-radius:4px">v1.9.3</span>
+        <span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;background:var(--adim);padding:1px 5px;border-radius:4px">v1.9.4</span>
       </div>
       <div class="logo-sub">운영 관리 시스템</div>
     </div>
@@ -3065,46 +3065,39 @@ function copyAddresses() {
 }
 
 
-function printRoute() {
+async function printRoute() {
   const summary = document.getElementById('route-summary').textContent;
   const steps   = document.getElementById('route-steps').innerHTML;
   const today   = new Date().toLocaleDateString('ko-KR', {year:'numeric', month:'long', day:'numeric', weekday:'short'});
 
-  // 카카오 Static Map으로 경로 이미지 생성
-  let mapImgHtml = '';
-  if (kakaoMapInstance && routePolyline) {
+  // html2canvas로 현재 지도 DOM 캡처
+  let mapDataUrl = '';
+  const mapEl = document.getElementById('delivery-map');
+  if (mapEl && kakaoMapInstance) {
     try {
-      // 현재 지도 중심/레벨로 Static Map URL 생성
-      const center = kakaoMapInstance.getCenter();
-      const level  = kakaoMapInstance.getLevel();
-      const lat    = center.getLat().toFixed(6);
-      const lng    = center.getLng().toFixed(6);
-      // 마커 좌표 목록 (방문 순서대로)
-      const markerParams = leafletMarkers
-        .map(m => `${m.pos.getLng().toFixed(6)},${m.pos.getLat().toFixed(6)}`)
-        .join('|');
-      const staticUrl = `https://spi.maps.daum.net/map/staticmap/staticmap.png`
-        + `?appkey=${KAKAO_JS_KEY}&center=${lng},${lat}&level=${level}&w=720&h=400`
-        + `&markers=type:t|size:mid|color:orange|pos:${markerParams}`;
-      mapImgHtml = `<img src="${staticUrl}" style="width:100%;max-width:720px;border-radius:8px;margin-bottom:20px;border:1px solid #ddd" alt="배송 경로 지도" onerror="this.style.display='none'">`;
+      // html2canvas 동적 로드
+      if (!window.html2canvas) {
+        await new Promise((res, rej) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+          s.onload = res; s.onerror = rej;
+          document.head.appendChild(s);
+        });
+      }
+      const canvas = await html2canvas(mapEl, {
+        useCORS: true, allowTaint: true, scale: 1,
+        width: mapEl.offsetWidth, height: mapEl.offsetHeight,
+        logging: false,
+      });
+      mapDataUrl = canvas.toDataURL('image/png');
     } catch(e) {
-      console.warn('지도 이미지 생성 실패:', e);
+      console.warn('지도 캡처 실패:', e);
     }
   }
 
-  // 지도가 없으면 canvas로 캡처 시도
-  if (!mapImgHtml && kakaoMapInstance) {
-    const mapEl = document.getElementById('delivery-map');
-    const rect = mapEl.getBoundingClientRect();
-    // 현재 지도를 data URL로 캡처 (카카오 지도는 canvas 직접 캡처 불가)
-    // → 대신 지도 링크 표시
-    const center = kakaoMapInstance.getCenter();
-    const kakaoMapLink = `https://map.kakao.com/link/map/${center.getLat()},${center.getLng()}`;
-    mapImgHtml = `<div style="background:#f5f5f5;border-radius:8px;padding:20px;text-align:center;margin-bottom:20px;color:#555;border:1px solid #ddd">
-      🗺️ 지도 이미지는 인쇄 시 카카오맵에서 직접 캡처하거나
-      <a href="${kakaoMapLink}" target="_blank" style="color:#4a9ced">카카오맵에서 확인</a>하세요.
-    </div>`;
-  }
+  const mapImgHtml = mapDataUrl
+    ? `<img src="${mapDataUrl}" style="width:100%;border-radius:8px;border:1px solid #ddd;margin-bottom:16px">`
+    : `<div style="background:#f5f5f5;border-radius:8px;padding:16px;text-align:center;color:#888;border:1px solid #ddd;margin-bottom:16px">지도 이미지를 불러올 수 없습니다</div>`;
 
   const w = window.open('', '_blank');
   w.document.write(`<!DOCTYPE html><html lang="ko"><head>
@@ -3113,14 +3106,14 @@ function printRoute() {
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
       * { box-sizing: border-box; }
-      body { font-family: 'Noto Sans KR', sans-serif; margin: 28px; color: #111; font-size: 13px; line-height: 1.6; max-width: 780px; }
-      h2 { font-size: 18px; margin: 0 0 4px; }
-      .meta { font-size: 11px; color: #888; margin-bottom: 16px; }
+      body { font-family: 'Noto Sans KR', sans-serif; margin: 24px; color: #111; font-size: 13px; line-height: 1.6; max-width: 860px; }
+      h2 { font-size: 17px; margin: 0 0 3px; }
+      .meta { font-size: 11px; color: #888; margin-bottom: 12px; }
       .summary { display: inline-block; font-size: 12px; background: #e8f5e9; color: #2e7d32;
-                 padding: 3px 12px; border-radius: 10px; margin-bottom: 16px; font-family: monospace; font-weight: 600; }
-      .layout { display: flex; gap: 24px; align-items: flex-start; }
-      .map-col { flex: 1; }
-      .route-col { width: 260px; flex-shrink: 0; }
+                 padding: 2px 10px; border-radius: 10px; margin-bottom: 14px; font-family: monospace; font-weight: 600; }
+      .layout { display: flex; gap: 20px; align-items: flex-start; }
+      .map-col { flex: 1.4; min-width: 0; }
+      .route-col { flex: 1; min-width: 200px; }
       .step { display: flex; gap: 8px; align-items: stretch; }
       .step-icon { display: flex; flex-direction: column; align-items: center; }
       .circle { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center;
@@ -3133,7 +3126,7 @@ function printRoute() {
       .s-addr   { font-size: 11px; color: #666; margin-top: 1px; word-break: keep-all; }
       .s-memo   { font-size: 11px; color: #e8a045; margin-top: 2px; }
       @media print {
-        body { margin: 12px; }
+        body { margin: 10px; }
         .layout { flex-direction: column; }
         .route-col { width: 100%; }
       }
@@ -3149,7 +3142,7 @@ function printRoute() {
   </body></html>`);
   w.document.close();
   w.focus();
-  setTimeout(() => { w.print(); }, 600);
+  setTimeout(() => { w.print(); }, 800);
 }
 
 function clearDeliveryMap() {

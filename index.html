@@ -263,7 +263,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
     <div>
       <div style="display:flex;align-items:center;gap:6px">
         <div class="logo-text">바비야기 수원점</div>
-        <span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;background:var(--adim);padding:1px 5px;border-radius:4px">v1.8</span>
+        <span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;background:var(--adim);padding:1px 5px;border-radius:4px">v1.8.2</span>
       </div>
       <div class="logo-sub">운영 관리 시스템</div>
     </div>
@@ -551,9 +551,12 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 
         <!-- 경로 결과 -->
         <div id="route-result" style="display:none;margin-top:.875rem" class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:6px">
             <div style="font-size:14px;font-weight:600">🚗 최적 경로</div>
-            <div id="route-summary" style="font-size:11px;color:var(--green);background:var(--gdim);padding:2px 8px;border-radius:10px;font-family:'DM Mono',monospace"></div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div id="route-summary" style="font-size:11px;color:var(--green);background:var(--gdim);padding:2px 8px;border-radius:10px;font-family:'DM Mono',monospace"></div>
+              <button class="btn btn-sm" onclick="printRoute()" style="padding:4px 10px;font-size:11px">🖨️ 인쇄</button>
+            </div>
           </div>
           <div id="route-steps"></div>
         </div>
@@ -2435,9 +2438,10 @@ async function extractAddresses() {
     renderAddrTable();
     document.getElementById('delivery-result').style.display = 'block';
 
-    // SDK 로드 (최초 1회) → geocode → 지도 표시
+    // SDK 로드 → 출발지 좌표 조회 → geocode → 지도 표시
     try {
       await ensureKakaoReady();
+      await resolveOrigin(); // 출발지 좌표 미리 확보
     } catch(sdkErr) {
       status.textContent = '❌ ' + sdkErr.message;
       throw sdkErr;
@@ -2655,23 +2659,26 @@ function _buildKakaoMap(valid) {
   const bounds = new kakao.maps.LatLngBounds();
 
   // ── 출발지(바비야기) 마커 ──
-  const originPos = new kakao.maps.LatLng(ORIGIN.lat, ORIGIN.lng);
-  bounds.extend(originPos);
-  const originMarker = new kakao.maps.Marker({ position: originPos, map });
-  const originOverlay = new kakao.maps.CustomOverlay({
-    position: originPos,
-    content: `<div style="background:#4a9ced;color:#fff;padding:3px 8px;border-radius:10px;font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);white-space:nowrap;margin-top:-42px">🏪 출발</div>`,
-    zIndex: 10,
-  });
-  originOverlay.setMap(map);
-  const originIw = new kakao.maps.InfoWindow({
-    content: `<div style="padding:8px 12px;font-size:13px;font-weight:700;color:#4a9ced">🏪 바비야기 수원점<br><span style="font-size:11px;color:#666;font-weight:400">서수원로523번길 30-21</span></div>`,
-    removable: true,
-  });
-  kakao.maps.event.addListener(originMarker, 'click', () => {
-    leafletMarkers.forEach(m => m.iw.close());
-    originIw.open(map, originMarker);
-  });
+  let originIw = null;
+  if (ORIGIN.lat && ORIGIN.lng) {
+    const originPos = new kakao.maps.LatLng(ORIGIN.lat, ORIGIN.lng);
+    bounds.extend(originPos);
+    const originMarker = new kakao.maps.Marker({ position: originPos, map });
+    const originOverlay = new kakao.maps.CustomOverlay({
+      position: originPos,
+      content: `<div style="background:#4a9ced;color:#fff;padding:3px 8px;border-radius:10px;font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);white-space:nowrap;margin-top:-42px">🏪 출발</div>`,
+      zIndex: 10,
+    });
+    originOverlay.setMap(map);
+    originIw = new kakao.maps.InfoWindow({
+      content: `<div style="padding:8px 12px;font-size:13px;font-weight:700;color:#4a9ced">🏪 바비야기 수원점<br><span style="font-size:11px;color:#666;font-weight:400">서수원로523번길 30-21</span></div>`,
+      removable: true,
+    });
+    kakao.maps.event.addListener(originMarker, 'click', () => {
+      leafletMarkers.forEach(m => m.iw.close());
+      originIw.open(map, originMarker);
+    });
+  }
 
   // ── 배송지 마커 ──
   valid.forEach(a => {
@@ -2697,7 +2704,7 @@ function _buildKakaoMap(valid) {
 
     kakao.maps.event.addListener(marker, 'click', () => {
       leafletMarkers.forEach(m => m.iw.close());
-      originIw.close();
+      if (originIw) originIw.close();
       infoWindow.open(map, marker);
       document.querySelectorAll('[id^="addr-row-"]').forEach(r => r.style.background = '');
       const row = document.getElementById('addr-row-' + a.idx);
@@ -2740,7 +2747,26 @@ function focusMarker(idx) {
 
 // ===================== 최적 경로 계산 (OSRM) =====================
 // 바비야기 수원점 (출발지 고정)
-const ORIGIN = { lat: 37.25702, lng: 126.97269, name: '🏪 바비야기 수원점' };
+// 출발지: 앱 로드 시 카카오 Geocoder로 정확한 좌표 조회
+const ORIGIN_ADDR = '경기도 수원시 권선구 서수원로523번길 30-21';
+let ORIGIN = { lat: null, lng: null, name: '🏪 바비야기 수원점' };
+
+async function resolveOrigin() {
+  if (ORIGIN.lat) return; // 이미 조회됨
+  try {
+    await ensureKakaoReady();
+    const geocoder = new kakao.maps.services.Geocoder();
+    await new Promise(resolve => {
+      geocoder.addressSearch(ORIGIN_ADDR, (result, status) => {
+        if (status === kakao.maps.services.Status.OK && result[0]) {
+          ORIGIN.lat = parseFloat(result[0].y);
+          ORIGIN.lng = parseFloat(result[0].x);
+        }
+        resolve();
+      });
+    });
+  } catch(e) { console.warn('출발지 좌표 조회 실패:', e); }
+}
 let routePolyline = null;  // 지도에 그린 경로선
 
 async function calcRoute() {
@@ -2753,6 +2779,10 @@ async function calcRoute() {
   btn.textContent = '⏳ 계산 중...';
 
   try {
+    // 출발지 좌표 확보
+    await resolveOrigin();
+    if (!ORIGIN.lat) { alert('출발지 좌표를 가져오지 못했습니다.'); return; }
+
     // 출발지 + 배송지 좌표
     const allPts = [ORIGIN, ...valid];
     const coordStr = allPts.map(p => `${p.lng},${p.lat}`).join(';');
@@ -2854,6 +2884,46 @@ function drawRouteOnMap(geoJson, orderedPts) {
 function copyAddresses() {
   const text = deliveryAddresses.map(a => `${a.idx}. ${a.name}\t${a.address}`).join('\n');
   navigator.clipboard.writeText(text).then(() => alert('주소 목록이 복사되었습니다'));
+}
+
+
+function printRoute() {
+  const summary = document.getElementById('route-summary').textContent;
+  const steps   = document.getElementById('route-steps').innerHTML;
+  const today   = new Date().toLocaleDateString('ko-KR', {year:'numeric', month:'long', day:'numeric', weekday:'short'});
+
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html lang="ko"><head>
+    <meta charset="UTF-8">
+    <title>배송 경로 — 바비야기 수원점</title>
+    <style>
+      body { font-family: 'Noto Sans KR', sans-serif; margin: 32px; color: #111; font-size: 13px; line-height: 1.6; }
+      h2 { font-size: 17px; margin-bottom: 4px; }
+      .meta { font-size: 11px; color: #888; margin-bottom: 20px; }
+      .summary { display: inline-block; font-size: 12px; background: #e8f5e9; color: #2e7d32;
+                 padding: 3px 10px; border-radius: 10px; margin-bottom: 16px; font-family: monospace; }
+      .step { display: flex; gap: 10px; align-items: stretch; }
+      .step-icon { display: flex; flex-direction: column; align-items: center; gap: 0; }
+      .circle { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center;
+                justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; color: #fff; }
+      .origin { background: #4a9ced; }
+      .stop   { background: #e8a045; color: #1a1814; }
+      .line   { flex: 1; width: 2px; background: #ddd; margin: 3px auto; min-height: 10px; }
+      .info   { padding: 2px 0 12px 0; flex: 1; }
+      .name   { font-weight: 700; font-size: 13px; }
+      .addr   { font-size: 11px; color: #666; margin-top: 1px; }
+      .memo   { font-size: 11px; color: #e8a045; margin-top: 2px; }
+      @media print { body { margin: 16px; } }
+    </style>
+  </head><body>
+    <h2>🚗 배송 경로 — 바비야기 수원점</h2>
+    <div class="meta">${today} 인쇄</div>
+    <div class="summary">${summary}</div>
+    <div>${steps}</div>
+  </body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => { w.print(); }, 300);
 }
 
 function clearDeliveryMap() {
